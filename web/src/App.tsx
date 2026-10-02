@@ -2,17 +2,17 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import Login from './pages/Login';
-import BusinessSelect from './pages/BusinessSelect';
-import BusinessCreate from './pages/BusinessCreate';
-import Dashboard from './pages/Dashboard';
-import Brands from './pages/Brands';
-import Categories from './pages/Categories';
-import Products from './pages/Products';
-import Sales from './pages/Sales';
-import Purchases from './pages/Purchases';
-import Suppliers from './pages/Suppliers';
-import Customers from './pages/Customers';
+import Login from './pages/auth/Login';
+import BusinessSelect from './pages/businesses/BusinessSelect';
+import BusinessCreate from './pages/businesses/BusinessCreate';
+import Dashboard from './pages/dashboard/Dashboard';
+import Brands from './pages/inventory/Brands';
+import Categories from './pages/inventory/Categories';
+import Products from './pages/inventory/Products';
+import Sales from './pages/sales/Sales';
+import Purchases from './pages/purchases/Purchases';
+import Suppliers from './pages/purchases/Suppliers';
+import Customers from './pages/sales/Customers';
 import Layout from './components/Layout';
 import { useAuthStore } from './store/authStore';
 

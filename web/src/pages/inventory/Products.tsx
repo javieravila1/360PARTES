@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import apiClient from '../api/client';
+import apiClient from '../../api/client';
 import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -21,6 +21,14 @@ interface Category { id: string; name: string; }
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,9 +115,9 @@ export default function Products() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Inventario de Productos</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-white">Inventario de Productos</h1>
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition"
+          className="btn-primary"
           onClick={() => setShowModal(true)}
         >
           <Plus size={20} className="mr-2" /> Nuevo Producto
@@ -117,15 +125,15 @@ export default function Products() {
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors">
-        <table className="w-full text-left">
+        <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 transition-colors">
             <tr>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Imagen</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">SKU</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Nombre</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Precio Sugerido</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Stock</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300 text-right">Acciones</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Imagen</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">SKU</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Nombre</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Precio Sugerido</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Stock</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -138,7 +146,7 @@ export default function Products() {
                 <tr key={p.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                   <td className="px-6 py-4">
                     {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover border border-slate-200" />
+                      <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                     ) : (
                       <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
                         <ImageIcon size={20} />
@@ -146,8 +154,8 @@ export default function Products() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{p.sku}</td>
-                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{p.name}</td>
-                  <td className="px-6 py-4 text-slate-800 dark:text-slate-200 font-bold">${Number(p.selling_price).toLocaleString()}</td>
+                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100 dark:text-slate-200">{p.name}</td>
+                  <td className="px-6 py-4 text-slate-800 dark:text-slate-100 dark:text-slate-200 font-bold">${Number(p.selling_price).toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${p.current_stock <= p.min_stock ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                       {Number(p.current_stock || 0)}
@@ -177,51 +185,74 @@ export default function Products() {
             )}
           </tbody>
         </table>
+
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 rounded-b-xl">
+          <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, products.length)} de {products.length}</span>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
       </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full transition-colors max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-white">Registrar Nuevo Producto</h2>
+            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100 dark:text-white">Registrar Nuevo Producto</h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
               <div className="flex gap-6 mb-6">
                 <div className="flex-1 space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nombre del Producto</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Nombre del Producto</label>
                     <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Código / SKU</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Código / SKU</label>
                       <input required value={formData.sku} onChange={e => setFormData({ ...formData, sku: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Stock Inicial</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Stock Inicial</label>
                       <input type="number" min="1" max="10000000" value={formData.current_stock} onChange={e => setFormData({ ...formData, current_stock: Number(e.target.value) })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Costo ($)</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Costo ($)</label>
                       <input type="text" inputMode="decimal" value={formData.cost_price || ''} onChange={e => setFormData({ ...formData, cost_price: Number(e.target.value.replace(/[^0-9.]/g, '')) })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Precio Sugerido de venta ($)</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Precio Sugerido de venta ($)</label>
                       <input type="text" inputMode="decimal" required value={formData.selling_price || ''} onChange={e => setFormData({ ...formData, selling_price: Number(e.target.value.replace(/[^0-9.]/g, '')) })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Marca (Opcional)</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Marca (Opcional)</label>
                       <select value={formData.brand_id} onChange={e => setFormData({ ...formData, brand_id: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none">
                         <option value="">Ninguna</option>
                         {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Categoría (Opcional)</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Categoría (Opcional)</label>
                       <select value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none">
                         <option value="">Ninguna</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -231,7 +262,7 @@ export default function Products() {
                 </div>
 
                 <div className="w-1/3 flex flex-col items-center">
-                  <label className="block text-sm font-medium text-slate-700 mb-2 w-full text-center">Foto (MinIO)</label>
+                  <label className="block label-field dark:text-slate-200 mb-2 w-full text-center">Foto (MinIO)</label>
                   <div className="w-full h-48 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-slate-50 relative overflow-hidden group">
                     {formData.image ? (
                       <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
@@ -259,7 +290,7 @@ export default function Products() {
               </div>
 
               <div className="flex justify-end space-x-3 mt-8 pt-4 border-t border-slate-200">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 rounded-lg">Cancelar</button>
                 <button type="submit" disabled={uploadingImage} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">Guardar Producto</button>
               </div>
 
@@ -271,9 +302,9 @@ export default function Products() {
       {showStockModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-sm transition-colors">
-            <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-white">Incrementar Stock</h2>
+            <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100 dark:text-white">Incrementar Stock</h2>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Cantidad a Ingresar</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Cantidad a Ingresar</label>
               <input 
                 type="text" 
                 inputMode="numeric" 
@@ -288,7 +319,7 @@ export default function Products() {
               />
             </div>
             <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-              <button type="button" onClick={() => setShowStockModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">Cancelar</button>
+              <button type="button" onClick={() => setShowStockModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">Cancelar</button>
               <button type="button" onClick={async () => {
                 if (stockToAdd <= 0) return toast.warning('Ingrese una cantidad válida');
                 try {
@@ -309,7 +340,7 @@ export default function Products() {
       {showHistoryModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-lg transition-colors">
-            <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-white flex items-center">
+            <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100 dark:text-white flex items-center">
               Historial de Stock
             </h2>
             <div className="max-h-96 overflow-y-auto pr-2 space-y-3">
@@ -325,7 +356,7 @@ export default function Products() {
                       <p className="text-xs text-slate-500 mt-1">{new Date(mov.created_at).toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">
+                      <p className="text-sm font-black text-slate-800 dark:text-slate-100 dark:text-slate-200">
                         {mov.movement_type.includes('ENTRADA') ? '+' : '-'}{mov.quantity}
                       </p>
                       <p className="text-xs text-slate-500 font-semibold">{mov.previous_stock} &rarr; {mov.new_stock}</p>
@@ -335,7 +366,7 @@ export default function Products() {
               )}
             </div>
             <div className="flex justify-end mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-              <button type="button" onClick={() => setShowHistoryModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg font-bold">Cerrar</button>
+              <button type="button" onClick={() => setShowHistoryModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg font-bold">Cerrar</button>
             </div>
           </div>
         </div>

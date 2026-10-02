@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import apiClient from '../api/client';
+import apiClient from '../../api/client';
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, User, Calendar, History, Receipt } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -23,6 +23,14 @@ export default function Sales() {
 
   // POS States
   const [products, setProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -393,14 +401,14 @@ export default function Sales() {
             </div>
           ) : (
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <table className="w-full text-left">
+              <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">ID Venta</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Fecha</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Método</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Productos</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Total</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">ID Venta</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Fecha</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Método</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Productos</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -419,6 +427,29 @@ export default function Sales() {
                   ))}
                 </tbody>
               </table>
+
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 rounded-b-xl">
+          <span className="text-sm text-slate-600 font-medium">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, products.length)} de {products.length}</span>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
             </div>
           )}
         </div>

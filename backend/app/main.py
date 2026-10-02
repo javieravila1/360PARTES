@@ -27,6 +27,14 @@ async def lifespan(app: FastAPI):
     # Crear todas las tablas al iniciar
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+    # Auto-seed the admin user
+    try:
+        from seed_admin import seed
+        await seed()
+    except Exception as e:
+        print(f"Error seeding admin user: {e}")
+        
     yield
 
 app = FastAPI(

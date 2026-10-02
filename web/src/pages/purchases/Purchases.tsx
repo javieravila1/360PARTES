@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import apiClient from '../api/client';
+import apiClient from '../../api/client';
 import { PackagePlus, Receipt, AlertCircle, CheckCircle2, DollarSign, Calendar, List } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -9,6 +9,14 @@ export default function Purchases() {
 
   // --- ESTADOS GASTOS ---
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = expenses.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(expenses.length / itemsPerPage);
+
   const [expenseForm, setExpenseForm] = useState({
     category: 'OTROS',
     description: '',
@@ -132,11 +140,11 @@ export default function Purchases() {
             <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-white">Registrar Gasto</h2>
             <form onSubmit={handleCreateExpense} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">Fecha</label>
+                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Fecha</label>
                 <input type="date" value={expenseForm.expense_date} onChange={e => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} className="w-full border dark:border-slate-600 bg-transparent rounded-xl p-3 dark:text-white outline-none focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">Monto</label>
+                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Monto</label>
                 <input
                   type="number"
                   step="any"
@@ -148,7 +156,7 @@ export default function Purchases() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">Categoría</label>
+                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Categoría</label>
                 <select value={expenseForm.category} onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })} className="w-full border dark:border-slate-600 bg-transparent rounded-xl p-3 dark:text-white outline-none focus:border-blue-500">
                   <option value="SERVICIOS">Servicios (Luz, Agua, Internet)</option>
                   <option value="NOMINA">Nómina / Empleados</option>
@@ -157,7 +165,7 @@ export default function Purchases() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">Descripción</label>
+                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Descripción</label>
                 <input type="text" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} className="w-full border dark:border-slate-600 bg-transparent rounded-xl p-3 dark:text-white outline-none focus:border-blue-500" required />
               </div>
               <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 mt-4 transition">Guardar Gasto</button>
@@ -167,22 +175,45 @@ export default function Purchases() {
           <div className="flex-1 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 overflow-hidden">
             <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-white">Historial de Gastos</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-700/50">
                   <tr><th className="p-4 rounded-tl-xl text-slate-600 dark:text-slate-300 font-semibold text-sm">Fecha</th><th className="p-4 text-slate-600 dark:text-slate-300 font-semibold text-sm">Categoría</th><th className="p-4 text-slate-600 dark:text-slate-300 font-semibold text-sm">Descripción</th><th className="p-4 rounded-tr-xl text-slate-600 dark:text-slate-300 font-semibold text-sm text-right">Monto</th></tr>
                 </thead>
                 <tbody>
-                  {expenses.map(exp => (
+                  {currentItems.map(exp => (
                     <tr key={exp.id} className="border-b dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
-                      <td className="p-4 text-slate-700 dark:text-slate-300 font-medium text-sm">{exp.expense_date}</td>
-                      <td className="p-4 font-bold text-slate-700 dark:text-slate-300 text-sm">{exp.category}</td>
-                      <td className="p-4 text-slate-700 dark:text-slate-300 text-sm">{exp.description}</td>
+                      <td className="p-4 text-slate-700 dark:text-slate-200 dark:text-slate-300 font-medium text-sm">{exp.expense_date}</td>
+                      <td className="p-4 font-bold text-slate-700 dark:text-slate-200 dark:text-slate-300 text-sm">{exp.category}</td>
+                      <td className="p-4 text-slate-700 dark:text-slate-200 dark:text-slate-300 text-sm">{exp.description}</td>
                       <td className="p-4 text-right text-rose-500 font-black">${exp.amount.toLocaleString()}</td>
                     </tr>
                   ))}
                   {expenses.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400 font-medium">No hay gastos registrados</td></tr>}
                 </tbody>
               </table>
+
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 rounded-b-xl">
+          <span className="text-sm text-slate-600 font-medium">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, expenses.length)} de {expenses.length}</span>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white text-slate-600 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white text-slate-600 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
             </div>
           </div>
         </div>
@@ -325,7 +356,7 @@ export default function Purchases() {
 
             <form onSubmit={handleAddPayment} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">Fecha del Abono</label>
+                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Fecha del Abono</label>
                 <input
                   type="date"
                   value={paymentModal.date}
@@ -335,7 +366,7 @@ export default function Purchases() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">Cantidad a abonar</label>
+                <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Cantidad a abonar</label>
                 <input
                   type="number"
                   step="any"
