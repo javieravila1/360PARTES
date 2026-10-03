@@ -168,7 +168,7 @@ export default function Purchases() {
                 <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Descripción</label>
                 <input type="text" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} className="w-full border dark:border-slate-600 bg-transparent rounded-xl p-3 dark:text-white outline-none focus:border-blue-500" required />
               </div>
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 mt-4 transition">Guardar Gasto</button>
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md mt-4 transition">Guardar Gasto</button>
             </form>
           </div>
 
@@ -379,7 +379,7 @@ export default function Purchases() {
               </div>
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <button type="button" onClick={() => setPaymentModal({ isOpen: false, debt: null, amount: '', date: '' })} className="px-4 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg font-bold">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200">Abonar</button>
+                <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-md">Abonar</button>
               </div>
             </form>
           </div>

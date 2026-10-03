@@ -55,11 +55,11 @@ export default function Dashboard() {
               <Activity size={14} className="mr-1.5" /> Sistema En Línea
             </span>
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            Resumen General
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-slate-900 dark:text-white mb-1">
+            {currentBusiness?.name || 'Tu Negocio'}
           </h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2">
-            Métricas principales de <span className="font-bold text-slate-700 dark:text-slate-200">{currentBusiness?.name || 'tu negocio'}</span>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Resumen General y Métricas Principales
           </p>
         </div>
         

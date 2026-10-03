@@ -94,7 +94,7 @@ class StatisticsScreen extends ConsumerWidget {
         gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: gradient.first.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(color: gradient.first.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Row(
@@ -104,7 +104,7 @@ class StatisticsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isSmall ? 13 : 14, fontWeight: FontWeight.w600)),
+                Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: isSmall ? 13 : 14, fontWeight: FontWeight.w600)),
                 SizedBox(height: isSmall ? 4 : 8),
                 Text('\$${value.toStringAsFixed(0)}', style: TextStyle(color: Colors.white, fontSize: isSmall ? 22 : 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
               ],
@@ -112,7 +112,7 @@ class StatisticsScreen extends ConsumerWidget {
           ),
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
             child: Icon(icon, color: Colors.white, size: isSmall ? 20 : 28),
           )
         ],
@@ -159,7 +159,7 @@ class StatisticsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +234,7 @@ class StatisticsScreen extends ConsumerWidget {
                     belowBarData: BarAreaData(
                       show: true,
                       gradient: LinearGradient(
-                        colors: [const Color(0xFF6366F1).withOpacity(0.3), const Color(0xFF6366F1).withOpacity(0.0)],
+                        colors: [const Color(0xFF6366F1).withValues(alpha: 0.3), const Color(0xFF6366F1).withValues(alpha: 0.0)],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -251,7 +251,7 @@ class StatisticsScreen extends ConsumerWidget {
                           children: [
                             TextSpan(
                               text: chartData[spot.x.toInt()]['date'],
-                              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.normal),
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.normal),
                             )
                           ],
                         );
@@ -273,7 +273,7 @@ class StatisticsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,7 +312,7 @@ class StatisticsScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.indigo.withOpacity(0.1),
+          color: Colors.indigo.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(

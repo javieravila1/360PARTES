@@ -13,11 +13,11 @@ class MainNavigationScreen extends ConsumerWidget {
   const MainNavigationScreen({super.key});
 
   final List<Widget> _screens = const [
-    const DashboardScreen(),
-    const InventoryScreen(),
-    const PosScreen(),
-    const ExpensesScreen(),
-    const MoreScreen(),
+    DashboardScreen(),
+    InventoryScreen(),
+    PosScreen(),
+    ExpensesScreen(),
+    MoreScreen(),
   ];
 
   @override
@@ -37,27 +37,27 @@ class MainNavigationScreen extends ConsumerWidget {
         destinations: const [
           NavigationDestination(
             icon: Icon(PhosphorIconsRegular.house),
-            selectedIcon: Icon(PhosphorIconsFill.house, color: Color(0xFF3B82F6)),
+            selectedIcon: Icon(PhosphorIconsFill.house),
             label: 'Inicio',
           ),
           NavigationDestination(
             icon: Icon(PhosphorIconsRegular.package),
-            selectedIcon: Icon(PhosphorIconsFill.package, color: Color(0xFF3B82F6)),
+            selectedIcon: Icon(PhosphorIconsFill.package),
             label: 'Inventario',
           ),
           NavigationDestination(
             icon: Icon(PhosphorIconsRegular.shoppingCart),
-            selectedIcon: Icon(PhosphorIconsFill.shoppingCart, color: Color(0xFF3B82F6)),
+            selectedIcon: Icon(PhosphorIconsFill.shoppingCart),
             label: 'Vender',
           ),
           NavigationDestination(
             icon: Icon(PhosphorIconsRegular.wallet),
-            selectedIcon: Icon(PhosphorIconsFill.wallet, color: Color(0xFF3B82F6)),
+            selectedIcon: Icon(PhosphorIconsFill.wallet),
             label: 'Gastos',
           ),
           NavigationDestination(
             icon: Icon(PhosphorIconsRegular.list),
-            selectedIcon: Icon(PhosphorIconsFill.list, color: Color(0xFF3B82F6)),
+            selectedIcon: Icon(PhosphorIconsFill.list),
             label: 'Más',
           ),
         ],

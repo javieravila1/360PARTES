@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../api/api_client.dart';
+import '../widgets/form_widgets.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? product;
@@ -177,109 +179,126 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final brandsAsync = ref.watch(brandsProvider);
 
     return Scaffold(
+      backgroundColor: FormColors.of(context).subtle,
       appBar: AppBar(
         title: Text(widget.product != null ? 'Editar Producto' : 'Nuevo Producto'),
+        backgroundColor: FormColors.of(context).surface,
+        scrolledUnderElevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nombre del producto', border: OutlineInputBorder()),
-                validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _skuController,
-                decoration: const InputDecoration(labelText: 'Código / SKU', border: OutlineInputBorder()),
-                validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _costController,
-                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Costo (\$)', border: OutlineInputBorder()),
-                      validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FormSection(
+                      title: 'Información Básica',
+                      icon: PhosphorIconsRegular.info,
+                      children: [
+                        AppField(
+                          label: 'Nombre del producto',
+                          controller: _nameController,
+                          required: true,
+                          icon: PhosphorIconsRegular.tag,
+                        ),
+                        AppField(
+                          label: 'Código / SKU',
+                          controller: _skuController,
+                          required: true,
+                          icon: PhosphorIconsRegular.barcode,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Precio Sugerido (\$)', border: OutlineInputBorder()),
-                      validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+                    const SizedBox(height: 24),
+                    FormSection(
+                      title: 'Precios e Inventario',
+                      icon: PhosphorIconsRegular.money,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppField.money(
+                                label: 'Costo',
+                                controller: _costController,
+                                required: true,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: AppField.money(
+                                label: 'Precio Sugerido',
+                                controller: _priceController,
+                                required: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                        AppField(
+                          label: 'Stock Inicial',
+                          controller: _stockController,
+                          required: true,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          icon: PhosphorIconsRegular.package,
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _stockController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(labelText: 'Stock Inicial', border: OutlineInputBorder()),
-                validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 24),
-              
-              // Selectores
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_selectedCategoryName ?? 'Seleccionar Categoría'),
-                subtitle: const Text('Categoría'),
-                trailing: const Icon(Icons.arrow_drop_down_circle),
-                onTap: () => _showSelectionSheet('Categoría', categoriesAsync, (id, name) {
-                  setState(() {
-                    _selectedCategoryId = id;
-                    _selectedCategoryName = name;
-                  });
-                }),
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_selectedBrandName ?? 'Seleccionar Marca'),
-                subtitle: const Text('Marca'),
-                trailing: const Icon(Icons.arrow_drop_down_circle),
-                onTap: () => _showSelectionSheet('Marca', brandsAsync, (id, name) {
-                  setState(() {
-                    _selectedBrandId = id;
-                    _selectedBrandName = name;
-                  });
-                }),
-              ),
-              const Divider(),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Controlar inventario'),
-                value: _trackInventory,
-                onChanged: (val) => setState(() => _trackInventory = val),
-              ),
-              
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: const Color(0xFF3B82F6),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    const SizedBox(height: 24),
+                    FormSection(
+                      title: 'Clasificación',
+                      icon: PhosphorIconsRegular.list,
+                      children: [
+                        AppSelectField(
+                          label: 'Categoría',
+                          value: _selectedCategoryName,
+                          placeholder: 'Seleccionar Categoría',
+                          required: true,
+                          onTap: () => _showSelectionSheet('Categoría', categoriesAsync, (id, name) {
+                            setState(() {
+                              _selectedCategoryId = id;
+                              _selectedCategoryName = name;
+                            });
+                          }),
+                        ),
+                        AppSelectField(
+                          label: 'Marca',
+                          value: _selectedBrandName,
+                          placeholder: 'Seleccionar Marca',
+                          required: true,
+                          onTap: () => _showSelectionSheet('Marca', brandsAsync, (id, name) {
+                            setState(() {
+                              _selectedBrandId = id;
+                              _selectedBrandName = name;
+                            });
+                          }),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Controlar inventario', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                          value: _trackInventory,
+                          activeThumbColor: FormColors.success,
+                          onChanged: (val) => setState(() => _trackInventory = val),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Guardar Producto', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-            ],
+            ),
           ),
-        ),
+          FormActionBar(
+            child: AppButton(
+              label: 'Guardar Producto',
+              onPressed: _submit,
+              loading: _isLoading,
+              icon: PhosphorIconsRegular.floppyDisk,
+            ),
+          ),
+        ],
       ),
     );
   }

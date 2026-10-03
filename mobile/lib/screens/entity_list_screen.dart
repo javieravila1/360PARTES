@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
+import '../widgets/form_widgets.dart';
 
 enum EntityType { customers, suppliers, categories, brands }
 
@@ -59,66 +60,59 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
     final descCtrl = TextEditingController(); // Usado para phone/desc
     bool isSaving = false;
 
-    showDialog(
+    showFormSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (c, setModalState) {
-          return AlertDialog(
-            title: Text('Nuevo $_title'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: widget.entityType == EntityType.suppliers ? 'Nombre Empresa' : 'Nombre',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descCtrl,
-                  decoration: InputDecoration(
-                    labelText: (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands) 
-                        ? 'Descripción (Opcional)' 
-                        : 'Teléfono (Opcional)',
-                  ),
-                ),
-              ],
+      title: 'Nuevo $_title',
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppField(
+              label: widget.entityType == EntityType.suppliers ? 'Nombre Empresa' : 'Nombre',
+              controller: nameCtrl,
+              required: true,
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-              ElevatedButton(
-                onPressed: isSaving ? null : () async {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  setModalState(() => isSaving = true);
-                  
-                  try {
-                    Map<String, dynamic> data = {};
-                    if (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands) {
-                      data = {"name": nameCtrl.text.trim(), "description": descCtrl.text.trim()};
-                    } else if (widget.entityType == EntityType.customers) {
-                      data = {"name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
-                    } else if (widget.entityType == EntityType.suppliers) {
-                      data = {"company_name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
-                    }
-
-                    await apiClient.post(_endpoint, data: data);
-                    if (mounted) {
-                      Navigator.pop(c);
-                      _fetchItems();
-                    }
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  } finally {
-                    setModalState(() => isSaving = false);
+            const SizedBox(height: 16),
+            AppField(
+              label: (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands) 
+                  ? 'Descripción (Opcional)' 
+                  : 'Teléfono (Opcional)',
+              controller: descCtrl,
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Guardar',
+              loading: isSaving,
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty) return;
+                setModalState(() => isSaving = true);
+                
+                try {
+                  Map<String, dynamic> data = {};
+                  if (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands) {
+                    data = {"name": nameCtrl.text.trim(), "description": descCtrl.text.trim()};
+                  } else if (widget.entityType == EntityType.customers) {
+                    data = {"name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
+                  } else if (widget.entityType == EntityType.suppliers) {
+                    data = {"company_name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
                   }
-                },
-                child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator()) : const Text('Guardar'),
-              ),
-            ],
-          );
-        }
-      )
+
+                  await apiClient.post(_endpoint, data: data);
+                  if (!c.mounted) return;
+                  Navigator.pop(c);
+                  if (!mounted) return;
+                  _fetchItems();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                } finally {
+                  if (mounted) setModalState(() => isSaving = false);
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -161,13 +155,6 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
               decoration: InputDecoration(
                 hintText: 'Buscar $_title...',
                 prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
             ),
           ),
@@ -198,47 +185,46 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                       final name = item['name'] ?? item['company_name'] ?? 'Desconocido';
                       final sub = item['description'] ?? item['phone'] ?? '';
                       
-                      Color iconColor;
-                      IconData iconData;
-                      switch (widget.entityType) {
-                        case EntityType.customers: iconColor = Colors.blue; iconData = PhosphorIconsRegular.users; break;
-                        case EntityType.suppliers: iconColor = Colors.purple; iconData = PhosphorIconsRegular.buildings; break;
-                        case EntityType.categories: iconColor = Colors.orange; iconData = PhosphorIconsRegular.tag; break;
-                        case EntityType.brands: iconColor = Colors.teal; iconData = PhosphorIconsRegular.bookmarks; break;
-                      }
-                      
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      final IconData iconData = widget.entityType == EntityType.categories
+                          ? PhosphorIconsRegular.tag
+                          : (widget.entityType == EntityType.brands ? PhosphorIconsRegular.bookmarks : PhosphorIconsRegular.users);
+                      final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+                      final initial = name.toString().trim().isEmpty ? '?' : name.toString().trim()[0].toUpperCase();
+                      final isContact = widget.entityType == EntityType.customers || widget.entityType == EntityType.suppliers;
+
+                      return Material(
+                        color: isDark ? const Color(0xFF111827) : Colors.white,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
-                          ],
+                          side: BorderSide(color: isDark ? const Color(0xFF273244) : const Color(0xFFE2E8F0)),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: iconColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                        clipBehavior: Clip.antiAlias,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            leading: Container(
+                              width: 46,
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1F2A3D) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: isContact
+                                  ? Text(initial, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155)))
+                                  : Icon(iconData, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155), size: 22),
                             ),
-                            child: Icon(iconData, color: iconColor),
+                            title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                            subtitle: sub.isNotEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.only(top: 3.0),
+                                    child: Text(sub, style: TextStyle(color: muted, fontSize: 13)),
+                                  )
+                                : null,
+                            trailing: Icon(PhosphorIconsRegular.caretRight, size: 18, color: muted),
+                            onTap: () {
+                              // En el futuro se podría ir a detalle o editar
+                            },
                           ),
-                          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          subtitle: sub.isNotEmpty 
-                              ? Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text(sub, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                                ) 
-                              : null,
-                          trailing: Icon(PhosphorIconsRegular.caretRight, color: Colors.grey.shade400),
-                          onTap: () {
-                            // En el futuro se podría ir a detalle o editar
-                          },
-                        ),
                       );
                     },
                   ),
@@ -247,9 +233,8 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddDialog,
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(PhosphorIconsRegular.plus, color: Colors.white),
-        label: Text('Nuevo', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        icon: const Icon(PhosphorIconsBold.plus, size: 18),
+        label: const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }

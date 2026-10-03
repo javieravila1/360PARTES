@@ -7,6 +7,7 @@ import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
 import '../api/api_client.dart';
 import 'product_form_screen.dart';
+import '../widgets/form_widgets.dart';
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
@@ -67,7 +68,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               const Text('¿Qué deseas crear?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.blue, child: Icon(PhosphorIconsRegular.package, color: Colors.white)),
+                leading: const CircleAvatar(backgroundColor: Color(0xFF334155), child: Icon(PhosphorIconsRegular.package, color: Colors.white)),
                 title: const Text('Nuevo Producto'),
                 subtitle: const Text('Agregar un repuesto al inventario'),
                 onTap: () {
@@ -77,7 +78,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               ),
               const Divider(),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.orange, child: Icon(PhosphorIconsRegular.tag, color: Colors.white)),
+                leading: const CircleAvatar(backgroundColor: Color(0xFF475569), child: Icon(PhosphorIconsRegular.tag, color: Colors.white)),
                 title: const Text('Nueva Categoría'),
                 subtitle: const Text('Ej: Frenos, Motor, Eléctrico...'),
                 onTap: () {
@@ -87,7 +88,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               ),
               const Divider(),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(PhosphorIconsRegular.bookmarks, color: Colors.white)),
+                leading: const CircleAvatar(backgroundColor: Color(0xFF64748B), child: Icon(PhosphorIconsRegular.bookmarks, color: Colors.white)),
                 title: const Text('Nueva Marca'),
                 subtitle: const Text('Ej: Toyota, Bosch, NGK...'),
                 onTap: () {
@@ -107,48 +108,51 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final descCtrl = TextEditingController();
     bool isSaving = false;
 
-    showDialog(
+    showFormSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (c, setModalState) {
-          return AlertDialog(
-            title: Text('Crear $entityName'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nombre')),
-                const SizedBox(height: 12),
-                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Descripción (Opcional)')),
-              ],
+      title: 'Crear $entityName',
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppField(
+              label: 'Nombre',
+              controller: nameCtrl,
+              required: true,
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-              ElevatedButton(
-                onPressed: isSaving ? null : () async {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  setModalState(() => isSaving = true);
-                  try {
-                    await apiClient.post(endpoint, data: {
-                      "name": nameCtrl.text.trim(),
-                      "description": descCtrl.text.trim()
-                    });
-                    ref.invalidate(providerToRefresh);
-                    if (mounted) {
-                      Navigator.pop(c);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$entityName creada')));
-                    }
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  } finally {
-                    setModalState(() => isSaving = false);
-                  }
-                },
-                child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator()) : const Text('Guardar'),
-              )
-            ],
-          );
-        }
-      )
+            const SizedBox(height: 16),
+            AppField(
+              label: 'Descripción (Opcional)',
+              controller: descCtrl,
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Guardar',
+              loading: isSaving,
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty) return;
+                setModalState(() => isSaving = true);
+                try {
+                  await apiClient.post(endpoint, data: {
+                    "name": nameCtrl.text.trim(),
+                    "description": descCtrl.text.trim()
+                  });
+                  ref.invalidate(providerToRefresh);
+                  if (!c.mounted) return;
+                  Navigator.pop(c);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$entityName creada')));
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                } finally {
+                  if (mounted) setModalState(() => isSaving = false);
+                }
+              },
+            ),
+          ],
+        );
+      }
     );
   }
 
@@ -188,15 +192,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Buscar repuesto por nombre o SKU...',
+                hintText: 'Buscar por nombre o SKU...',
                 prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                suffixIcon: _searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(PhosphorIconsRegular.x, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      ),
               ),
             ),
           ),
@@ -264,14 +270,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 return RefreshIndicator(
                   onRefresh: () async => ref.refresh(inventoryProvider),
                   child: ListView.separated(
-                    padding: const EdgeInsets.only(bottom: 80),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                     itemCount: filteredProducts.length,
-                    separatorBuilder: (context, index) => Divider(
-                      height: 1,
-                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                      indent: 16,
-                      endIndent: 16,
-                    ),
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
                       final stock = product['current_stock'] ?? 0;
@@ -279,16 +280,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       final isOut = stock == 0;
                       final suggestedPrice = double.tryParse(product['selling_price']?.toString() ?? '0') ?? 0.0;
 
-                      return Dismissible(
+                      return ClipRRect(
+                       borderRadius: BorderRadius.circular(16),
+                       child: Dismissible(
                         key: Key(product['id'].toString()),
                         background: Container(
-                          color: Colors.green,
+                          color: const Color(0xFF475569),
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.only(left: 20),
                           child: const Icon(PhosphorIconsRegular.plusCircle, color: Colors.white),
                         ),
                         secondaryBackground: Container(
-                          color: Colors.red,
+                          color: const Color(0xFFB91C1C),
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
                           child: const Icon(PhosphorIconsRegular.trash, color: Colors.white),
@@ -332,16 +335,22 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             return false;
                           }
                         },
-                        child: ListTile(
+                        child: Material(
+                         color: isDark ? const Color(0xFF111827) : Colors.white,
+                         shape: RoundedRectangleBorder(
+                           borderRadius: BorderRadius.circular(16),
+                           side: BorderSide(color: isDark ? const Color(0xFF273244) : const Color(0xFFE2E8F0)),
+                         ),
+                         child: ListTile(
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => ProductFormScreen(product: product)));
                           },
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                           leading: Container(
-                            width: 50,
-                            height: 50,
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF334155) : Colors.blue.withOpacity(0.1),
+                              color: isDark ? const Color(0xFF1F2A3D) : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: product['image_url'] != null
@@ -349,11 +358,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                     child: Image.network(product['image_url'], fit: BoxFit.cover),
                                   )
-                                : Icon(PhosphorIconsRegular.wrench, color: isDark ? Colors.blue.shade300 : Colors.blue),
+                                : Icon(PhosphorIconsRegular.wrench, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
                           ),
                           title: Text(
                             product['name'] ?? 'Sin nombre',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -361,7 +370,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
                               'SKU: ${product['sku'] ?? 'N/A'}',
-                              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                              style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
                             ),
                           ),
                           trailing: Column(
@@ -371,46 +380,53 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               GestureDetector(
                                 onTap: () {
                                   final ctrl = TextEditingController(text: suggestedPrice.toStringAsFixed(0));
-                                  showDialog(
+                                  bool isSaving = false;
+                                  showFormSheet(
                                     context: context,
-                                    builder: (c) => AlertDialog(
-                                      title: const Text('Editar Precio Sugerido'),
-                                      content: TextField(
-                                        controller: ctrl,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(prefixText: '\$'),
-                                        autofocus: true,
-                                      ),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-                                        ElevatedButton(
+                                    title: 'Editar Precio Sugerido',
+                                    builder: (c, setModalState) => Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        AppField.money(
+                                          label: 'Precio',
+                                          controller: ctrl,
+                                          required: true,
+                                        ),
+                                        const SizedBox(height: 24),
+                                        AppButton(
+                                          label: 'Guardar',
+                                          loading: isSaving,
                                           onPressed: () async {
                                             final val = double.tryParse(ctrl.text);
                                             if (val != null) {
+                                              setModalState(() => isSaving = true);
                                               try {
                                                 await apiClient.put('/products/${product['id']}', data: {'selling_price': val});
                                                 ref.invalidate(inventoryProvider);
-                                                if (context.mounted) Navigator.pop(c);
+                                                if (!c.mounted) return;
+                                                Navigator.pop(c);
                                               } catch (e) {
+                                                if (!context.mounted) return;
                                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                                              } finally {
+                                                if (c.mounted) setModalState(() => isSaving = false);
                                               }
                                             }
                                           },
-                                          child: const Text('Guardar'),
-                                        )
+                                        ),
                                       ],
-                                    )
+                                    ),
                                   );
                                 },
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      'Sug: \$${suggestedPrice.toStringAsFixed(0)}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue),
+                                      '\$${suggestedPrice.toStringAsFixed(0)}',
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                                     ),
                                     const SizedBox(width: 4),
-                                    const Icon(PhosphorIconsRegular.pencilSimple, size: 14, color: Colors.blue),
+                                    Icon(PhosphorIconsRegular.pencilSimple, size: 13, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                                   ],
                                 ),
                               ),
@@ -418,14 +434,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               Text(
                                 '$stock unds',
                                 style: TextStyle(
-                                  color: isOut ? Colors.red : (isLowStock ? Colors.orange : Colors.green),
-                                  fontWeight: FontWeight.bold,
+                                  color: isOut ? const Color(0xFFB91C1C) : (isLowStock ? const Color(0xFFB45309) : const Color(0xFF059669)),
+                                  fontWeight: FontWeight.w600,
                                   fontSize: 12,
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        ),
+                       ),
                       );
                     },
                   ),
@@ -437,9 +455,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreationOptions,
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(PhosphorIconsRegular.plus, color: Colors.white),
-        label: const Text('Añadir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        icon: const Icon(PhosphorIconsBold.plus, size: 18),
+        label: const Text('Añadir', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }

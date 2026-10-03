@@ -138,7 +138,7 @@ export default function BusinessCreate() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 text-white rounded-2xl py-3.5 font-semibold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 mt-4"
+                className="w-full bg-indigo-600 text-white rounded-2xl py-3.5 font-semibold shadow-md hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 mt-4"
               >
                 {loading ? 'Creando...' : 'Crear Negocio'}
               </button>

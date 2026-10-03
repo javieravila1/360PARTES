@@ -422,7 +422,7 @@ export default function Sales() {
               <button
                 onClick={handleCheckout}
                 disabled={cart.length === 0 || isSubmitting}
-                className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-50 disabled:active:scale-100"
+                className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-md hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-50 disabled:active:scale-100"
               >
                 {isSubmitting ? 'Procesando...' : 'COBRAR'}
               </button>

@@ -44,11 +44,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Parse origins for specific domains if needed, but allow all via regex for dev
 origins = settings.CORS_ORIGINS.split(",")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=".*", # Permite cualquier origen (localhost, IPs locales, puertos dinámicos) sin fallar por credenciales
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

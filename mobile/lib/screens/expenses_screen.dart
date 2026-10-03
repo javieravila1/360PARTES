@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../providers/expenses_provider.dart';
 import '../providers/suppliers_provider.dart';
 import '../api/api_client.dart';
+import '../widgets/form_widgets.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
@@ -32,7 +33,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Compras y Gastos', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Compras y gastos'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -100,65 +101,60 @@ class _GeneralExpensesViewState extends ConsumerState<_GeneralExpensesView> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Registrar Gasto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.calendar_today),
-                            label: Text("${_date.day}/${_date.month}/${_date.year}"),
-                            onPressed: () async {
-                              final d = await showDatePicker(
-                                context: context,
-                                initialDate: _date,
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                              );
-                              if (d != null) setState(() => _date = d);
-                            },
-                          ),
-                        ),
-                      ],
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: FormSection(
+                title: 'Registrar gasto',
+                icon: PhosphorIconsRegular.wallet,
+                children: [
+                  AppSelectField(
+                    label: 'Fecha',
+                    value: "${_date.day}/${_date.month}/${_date.year}",
+                    placeholder: 'Seleccionar fecha',
+                    icon: PhosphorIconsRegular.calendar,
+                    onTap: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: _date,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (d != null) setState(() => _date = d);
+                    },
+                  ),
+                  AppField.money(
+                    label: 'Monto',
+                    controller: _amountController,
+                    required: true,
+                  ),
+                  AppField(
+                    label: 'Descripción',
+                    controller: _descController,
+                    required: true,
+                    icon: PhosphorIconsRegular.textAa,
+                  ),
+                  DropdownButtonFormField<String>(
+                    initialValue: _category,
+                    decoration: InputDecoration(
+                      labelText: 'Categoría',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Monto', prefixText: '\$', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _category,
-                      decoration: const InputDecoration(labelText: 'Categoría', border: OutlineInputBorder()),
-                      items: const [
-                        DropdownMenuItem(value: 'SERVICIOS', child: Text('Servicios')),
-                        DropdownMenuItem(value: 'NOMINA', child: Text('Nómina')),
-                        DropdownMenuItem(value: 'ARRIENDO', child: Text('Arriendo')),
-                        DropdownMenuItem(value: 'OTROS', child: Text('Otros')),
-                      ],
-                      onChanged: (val) => setState(() => _category = val!),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _descController,
-                      decoration: const InputDecoration(labelText: 'Descripción', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: _isSaving ? null : _saveExpense,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)),
-                      child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Guardar Gasto', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    )
-                  ],
-                ),
+                    items: const [
+                      DropdownMenuItem(value: 'SERVICIOS', child: Text('Servicios')),
+                      DropdownMenuItem(value: 'NOMINA', child: Text('Nómina')),
+                      DropdownMenuItem(value: 'ARRIENDO', child: Text('Arriendo')),
+                      DropdownMenuItem(value: 'OTROS', child: Text('Otros')),
+                    ],
+                    onChanged: (val) => setState(() => _category = val!),
+                  ),
+                  AppButton(
+                    label: 'Guardar gasto',
+                    loading: _isSaving,
+                    onPressed: _saveExpense,
+                    icon: PhosphorIconsRegular.floppyDisk,
+                  ),
+                ],
               ),
             ),
           ),
@@ -166,7 +162,7 @@ class _GeneralExpensesViewState extends ConsumerState<_GeneralExpensesView> {
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Text('Historial de Gastos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text('Historial de gastos', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           ),
         ),
         expensesAsync.when(
@@ -178,11 +174,18 @@ class _GeneralExpensesViewState extends ConsumerState<_GeneralExpensesView> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final exp = expenses[index];
-                  return ListTile(
-                    leading: const CircleAvatar(backgroundColor: Colors.red, child: Icon(Icons.money_off, color: Colors.white)),
-                    title: Text(exp['description']),
-                    subtitle: Text('${exp['category']} • ${exp['expense_date']}'),
-                    trailing: Text('\$${exp['amount']}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: const Color(0xFFB91C1C).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.south_east_rounded, color: Color(0xFFB91C1C), size: 18),
+                      ),
+                      title: Text(exp['description'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('${exp['category']} • ${exp['expense_date']}'),
+                      trailing: Text('\$${exp['amount']}', style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w700, fontSize: 15)),
+                    ),
                   );
                 },
                 childCount: expenses.length,
@@ -243,69 +246,51 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
 
   void _addPayment(Map<String, dynamic> debt) {
     final ctrl = TextEditingController();
-    showDialog(
+    bool isSavingPayment = false;
+
+    showFormSheet(
       context: context,
-      builder: (c) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Abonar a Crédito', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Text('Resta por pagar: \$${debt['balance']}', style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: ctrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'Cantidad a abonar', 
-                  prefixText: '\$ ', 
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () async {
-                      final val = double.tryParse(ctrl.text);
-                      if (val != null && val > 0) {
-                        try {
-                          await apiClient.post('/debts/${debt['id']}/payments', data: {
-                            "amount": val,
-                            "payment_date": DateTime.now().toUtc().toIso8601String().split('T')[0]
-                          });
-                          ref.invalidate(payablesProvider);
-                          if (mounted) {
-                            Navigator.pop(c);
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Abono registrado')));
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                        }
-                      }
-                    },
-                    child: const Text('Abonar'),
-                  )
-                ],
-              )
-            ],
-          ),
-        ),
-      )
+      title: 'Abonar a Crédito',
+      subtitle: 'Resta por pagar: \$${debt['balance']}',
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppField.money(
+              label: 'Cantidad a abonar',
+              controller: ctrl,
+              required: true,
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Abonar',
+              loading: isSavingPayment,
+              onPressed: () async {
+                final val = double.tryParse(ctrl.text);
+                if (val != null && val > 0) {
+                  setModalState(() => isSavingPayment = true);
+                  try {
+                    await apiClient.post('/debts/${debt['id']}/payments', data: {
+                      "amount": val,
+                      "payment_date": DateTime.now().toUtc().toIso8601String().split('T')[0]
+                    });
+                    ref.invalidate(payablesProvider);
+                    if (!c.mounted) return;
+                    Navigator.pop(c);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Abono registrado')));
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  } finally {
+                    setModalState(() => isSavingPayment = false);
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -331,7 +316,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                     itemBuilder: (ctx, i) {
                       final p = payments[i];
                       return ListTile(
-                        leading: const Icon(Icons.payment, color: Colors.green),
+                        leading: const Icon(Icons.payment, color: Color(0xFF059669)),
                         title: Text('\$${p['amount']}'),
                         subtitle: Text('Fecha: ${p['payment_date']}'),
                       );
@@ -355,101 +340,100 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Registrar Crédito', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.business),
-                      label: Text(_supplierName ?? 'Seleccionar Proveedor'),
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (ctx) => suppliersAsync.when(
-                            loading: () => const Center(child: CircularProgressIndicator()),
-                            error: (e, s) => const Center(child: Text('Error')),
-                            data: (sups) => ListView.builder(
-                              itemCount: sups.length,
-                              itemBuilder: (c, i) => ListTile(
-                                title: Text(sups[i]['company_name'] ?? sups[i]['name']),
-                                onTap: () {
-                                  setState(() {
-                                    _supplierId = sups[i]['id'];
-                                    _supplierName = sups[i]['company_name'] ?? sups[i]['name'];
-                                  });
-                                  Navigator.pop(ctx);
-                                },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: FormSection(
+                title: 'Registrar crédito',
+                icon: PhosphorIconsRegular.handshake,
+                children: [
+                  AppSelectField(
+                    label: 'Proveedor',
+                    value: _supplierName,
+                    placeholder: 'Seleccionar Proveedor',
+                    icon: PhosphorIconsRegular.buildings,
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                        builder: (ctx) => suppliersAsync.when(
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (e, s) => const Center(child: Text('Error')),
+                          data: (sups) => Column(
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text('Seleccionar Proveedor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                               ),
-                            )
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: sups.length,
+                                  itemBuilder: (c, i) => ListTile(
+                                    leading: const Icon(PhosphorIconsRegular.buildings),
+                                    title: Text(sups[i]['company_name'] ?? sups[i]['name']),
+                                    onTap: () {
+                                      setState(() {
+                                        _supplierId = sups[i]['id'];
+                                        _supplierName = sups[i]['company_name'] ?? sups[i]['name'];
+                                      });
+                                      Navigator.pop(ctx);
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
                           )
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.calendar_today),
-                            label: Text("Fecha Crédito: ${_creditDate.day}/${_creditDate.month}/${_creditDate.year}"),
-                            onPressed: () async {
-                              final d = await showDatePicker(
-                                context: context,
-                                initialDate: _creditDate,
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                              );
-                              if (d != null) setState(() => _creditDate = d);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.event_busy),
-                            label: Text(_dueDate == null ? "Fecha Límite (Opcional)" : "Límite: ${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}"),
-                            onPressed: () async {
-                              final d = await showDatePicker(
-                                context: context,
-                                initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 30)),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                              );
-                              if (d != null) setState(() => _dueDate = d);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(labelText: 'Monto Total', prefixText: '\$', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _conceptController,
-                      decoration: const InputDecoration(labelText: 'Concepto', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _isSaving ? null : _saveDebt,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, padding: const EdgeInsets.symmetric(vertical: 16)),
-                      child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Crear Registro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    )
-                  ],
-                ),
+                        )
+                      );
+                    },
+                  ),
+                  AppSelectField(
+                    label: 'Fecha Crédito',
+                    value: "${_creditDate.day}/${_creditDate.month}/${_creditDate.year}",
+                    placeholder: 'Seleccionar fecha',
+                    icon: PhosphorIconsRegular.calendar,
+                    onTap: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: _creditDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (d != null) setState(() => _creditDate = d);
+                    },
+                  ),
+                  AppSelectField(
+                    label: 'Fecha Límite (Opcional)',
+                    value: _dueDate == null ? null : "${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}",
+                    placeholder: 'Sin límite',
+                    icon: PhosphorIconsRegular.clock,
+                    onTap: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 30)),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (d != null) setState(() => _dueDate = d);
+                    },
+                  ),
+                  AppField.money(
+                    label: 'Monto total',
+                    controller: _amountController,
+                    required: true,
+                  ),
+                  AppField(
+                    label: 'Concepto',
+                    controller: _conceptController,
+                    required: true,
+                    icon: PhosphorIconsRegular.textAa,
+                  ),
+                  AppButton(
+                    label: 'Crear registro',
+                    loading: _isSaving,
+                    onPressed: _saveDebt,
+                    icon: PhosphorIconsRegular.floppyDisk,
+                  ),
+                ],
               ),
             ),
           ),
@@ -468,7 +452,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                   if (index == 0) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                      child: Text('Créditos Pendientes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
+                      child: Text('Créditos pendientes', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                     );
                   }
                   
@@ -479,7 +463,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                     final progress = (paidAmt / total).clamp(0.0, 1.0);
                     
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -496,13 +480,13 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                             if (d['due_date'] != null)
                               Text('Límite: ${d['due_date']}', style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
                             const SizedBox(height: 12),
-                            LinearProgressIndicator(value: progress, backgroundColor: Colors.grey.shade300, color: Colors.blue),
+                            LinearProgressIndicator(value: progress, minHeight: 6, borderRadius: BorderRadius.circular(4), backgroundColor: Colors.grey.withValues(alpha: 0.2), color: const Color(0xFF334155)),
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Pagado: \$${d['paid_amount']}', style: const TextStyle(color: Colors.green)),
-                                Text('Resta: \$${d['balance']}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                Text('Pagado: \$${d['paid_amount']}', style: const TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                                Text('Resta: \$${d['balance']}', style: const TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.w700)),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -517,7 +501,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                                    style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
                                     onPressed: () => _addPayment(d),
                                     child: const Text('Abonar'),
                                   ),
@@ -534,7 +518,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                   if (paidIndex == 0) {
                     return const Padding(
                       padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 24.0, bottom: 8.0),
-                      child: Text('Créditos Finalizados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                      child: Text('Créditos finalizados', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                     );
                   }
                   
@@ -543,7 +527,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.check_circle, color: Colors.green),
+                        leading: const Icon(Icons.check_circle, color: Color(0xFF059669)),
                         title: Text(d['contact_name'] ?? 'Proveedor', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(d['concept'] ?? ''),
                         trailing: Text('\$${d['total_amount']}', style: const TextStyle(color: Colors.grey, decoration: TextDecoration.lineThrough)),

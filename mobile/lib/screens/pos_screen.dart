@@ -11,6 +11,7 @@ import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
 import '../providers/sales_provider.dart';
 import '../api/api_client.dart';
+import '../widgets/form_widgets.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   const PosScreen({super.key});
@@ -47,78 +48,44 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final suggestedPrice = double.tryParse(product['selling_price']?.toString() ?? '0') ?? 0.0;
     final ctrl = TextEditingController();
     
-    showDialog(
+    showFormSheet(
       context: context,
-      builder: (c) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Precio Final', style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Text(product['name'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  children: [
-                    const Text('Sugerido', style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
-                    Text('\$${suggestedPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.blue, fontSize: 18, fontWeight: FontWeight.w900)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: ctrl,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  hintText: '0',
-                  prefixText: '\$ ',
-                  prefixStyle: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
-                  filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                ),
-                autofocus: true,
-              ),
-              const SizedBox(height: 24),
-              Row(
+      title: 'Precio Final',
+      subtitle: product['name'],
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text('Cancelar', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final finalPrice = double.tryParse(ctrl.text) ?? suggestedPrice;
-                        ref.read(cartProvider.notifier).addProductWithPrice(product, finalPrice);
-                        Navigator.pop(c);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Agregar', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
+                  Text('Sugerido', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text('\$${suggestedPrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 ],
               ),
-            ],
-          ),
-        ),
-      )
+            ),
+            const SizedBox(height: 24),
+            AppField.money(
+              label: 'Precio de venta',
+              controller: ctrl,
+              required: true,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Agregar al Carrito',
+              onPressed: () {
+                final finalPrice = double.tryParse(ctrl.text) ?? suggestedPrice;
+                ref.read(cartProvider.notifier).addProductWithPrice(product, finalPrice);
+                Navigator.pop(c);
+              },
+              icon: PhosphorIconsRegular.shoppingCart,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -158,10 +125,15 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               decoration: InputDecoration(
                 hintText: 'Buscar repuesto...',
                 prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                suffixIcon: _searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(PhosphorIconsRegular.x, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      ),
               ),
             ),
           ),
@@ -223,10 +195,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     return Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: isDark ? const Color(0xFF273244) : const Color(0xFFE2E8F0)),
                       ),
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      color: isDark ? const Color(0xFF111827) : Colors.white,
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: Row(
@@ -235,10 +207,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
                                 width: 50, height: 50,
-                                color: Colors.blue.withOpacity(0.1),
+                                color: isDark ? const Color(0xFF1F2A3D) : const Color(0xFFF1F5F9),
                                 child: p['image_url'] != null 
                                     ? Image.network(p['image_url'], fit: BoxFit.cover)
-                                    : const Icon(PhosphorIconsRegular.wrench, color: Colors.blue),
+                                    : Icon(PhosphorIconsRegular.wrench, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -246,13 +218,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(p['name'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  Text(p['name'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
                                       Text('Sug: \$${suggestedPrice.toStringAsFixed(2)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                                       const SizedBox(width: 8),
-                                      Text('Stock: $stock', style: TextStyle(color: stock == 0 ? Colors.red : Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      Text('Stock: $stock', style: TextStyle(color: stock == 0 ? const Color(0xFFB91C1C) : const Color(0xFF059669), fontSize: 12, fontWeight: FontWeight.w600)),
                                     ],
                                   ),
                                 ],
@@ -269,34 +241,32 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               OutlinedButton(
                                 onPressed: () => _askForFinalPrice(context, ref, p),
                                 style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(0, 38),
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  side: BorderSide(color: Colors.blue.shade300),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
                                 child: const Text('Agregar'),
                               )
                             else
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: isDark ? const Color(0xFF1F2A3D) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
                                       icon: const Icon(PhosphorIconsRegular.minus, size: 18),
-                                      color: Colors.blue,
                                       onPressed: () => ref.read(cartProvider.notifier).updateQuantity(p['id'], cartQty - 1),
-                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    Text('$cartQty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
+                                    Text('$cartQty', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                     IconButton(
                                       icon: const Icon(PhosphorIconsRegular.plus, size: 18),
-                                      color: Colors.blue,
                                       onPressed: cartQty < stock ? () => ref.read(cartProvider.notifier).updateQuantity(p['id'], cartQty + 1) : null,
-                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                                       padding: EdgeInsets.zero,
                                     ),
                                   ],
@@ -317,8 +287,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))],
+                color: isDark ? const Color(0xFF111827) : Colors.white,
+                border: Border(top: BorderSide(color: isDark ? const Color(0xFF273244) : const Color(0xFFE2E8F0))),
               ),
               child: SafeArea(
                 child: Row(
@@ -335,12 +305,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => _showCartBottomSheet(context, ref),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3B82F6),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Ver Compra Final', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: const Text('Ver compra final'),
                       ),
                     ),
                   ],
@@ -466,30 +431,33 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
 
   void _showPriceEditor(BuildContext context, String productId, double currentPrice) {
     final ctrl = TextEditingController(text: currentPrice.toStringAsFixed(2));
-    showDialog(
+    showFormSheet(
       context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Editar precio unitario final'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(prefixText: '\$'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () {
-              final newPrice = double.tryParse(ctrl.text);
-              if (newPrice != null) {
-                ref.read(cartProvider.notifier).updateCustomPrice(productId, newPrice);
-              }
-              Navigator.pop(c);
-            },
-            child: const Text('Guardar'),
-          )
-        ],
-      )
+      title: 'Editar precio unitario',
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppField.money(
+              label: 'Precio',
+              controller: ctrl,
+              required: true,
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Guardar',
+              onPressed: () {
+                final newPrice = double.tryParse(ctrl.text);
+                if (newPrice != null) {
+                  ref.read(cartProvider.notifier).updateCustomPrice(productId, newPrice);
+                }
+                Navigator.pop(c);
+              },
+              icon: PhosphorIconsRegular.floppyDisk,
+            )
+          ],
+        );
+      }
     );
   }
 
