@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, User, Calendar, History, Receipt } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, User, Calendar, History, Receipt, Printer } from 'lucide-react';
+import { useBusinessStore } from '../../store/businessStore';
 import { toast } from 'react-toastify';
 
 interface Product {
@@ -20,6 +21,7 @@ interface CartItem extends Product {
 
 export default function Sales() {
   const [activeTab, setActiveTab] = useState<'POS' | 'HISTORY'>('POS');
+  const currentBusiness = useBusinessStore((state) => state.currentBusiness);
 
   // POS States
   const [products, setProducts] = useState<Product[]>([]);
@@ -33,7 +35,7 @@ export default function Sales() {
 
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
@@ -140,6 +142,82 @@ export default function Sales() {
   const subtotal = cart.reduce((acc, item) => acc + (item.selling_price * item.cart_quantity), 0);
   const total = subtotal;
 
+  const printReceipt = (sale: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const date = new Date(sale.created_at || new Date()).toLocaleString();
+    const bName = currentBusiness?.name || 'Mi Negocio';
+    const bId = currentBusiness?.id?.substring(0, 8) || '';
+    
+    let itemsHtml = '';
+    sale.details?.forEach((d: any) => {
+      itemsHtml += `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
+          <span>${d.quantity}x ${d.product_name || 'Producto'}</span>
+          <span>$${(d.quantity * d.unit_price).toLocaleString()}</span>
+        </div>
+      `;
+    });
+
+    // Try to find customer name from customers list if we just created it, else it should come from API if modified
+    let customerName = sale.customer_name || 'Consumidor Final';
+
+    const html = `
+      <html>
+        <head>
+          <title>Recibo ${sale.id?.substring(0,8) || 'Venta'}</title>
+          <style>
+            body { font-family: monospace; width: 300px; margin: 0 auto; padding: 20px; color: #000; }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .text-xl { font-size: 20px; }
+            .border-b { border-bottom: 1px dashed #000; margin-bottom: 10px; padding-bottom: 10px; }
+            .flex-between { display: flex; justify-content: space-between; }
+            .mt-2 { margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="text-center border-b">
+            <div class="font-bold text-xl">${bName}</div>
+            <div style="font-size: 12px; margin-top: 5px;">ID: ${bId}</div>
+            <div style="font-size: 12px;">Fecha: ${date}</div>
+          </div>
+          
+          <div class="border-b" style="font-size: 12px;">
+            <div>Cliente: ${customerName}</div>
+            <div>Método: ${sale.payment_method || 'EFECTIVO'}</div>
+            <div>Ticket: #${sale.id?.substring(0,8).toUpperCase() || 'N/A'}</div>
+          </div>
+
+          <div class="border-b">
+            <div class="font-bold flex-between" style="font-size: 12px; margin-bottom: 5px;">
+              <span>CANT DESCRIPCIÓN</span>
+              <span>TOTAL</span>
+            </div>
+            ${itemsHtml}
+          </div>
+
+          <div class="flex-between font-bold" style="font-size: 16px;">
+            <span>TOTAL:</span>
+            <span>$${Number(sale.total).toLocaleString()}</span>
+          </div>
+          
+          <div class="text-center mt-2" style="font-size: 12px; margin-top: 20px;">
+            ¡Gracias por su preferencia!
+          </div>
+
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setIsSubmitting(true);
@@ -160,7 +238,7 @@ export default function Sales() {
     };
 
     try {
-      await apiClient.post('/sales/', saleData);
+      const { data: newSale } = await apiClient.post('/sales/', saleData);
       toast.success('Venta registrada con éxito');
       setCart([]);
       setSelectedCustomerId('');
@@ -322,20 +400,20 @@ export default function Sales() {
 
               <div className="grid grid-cols-3 gap-2 mb-6">
                 <button
-                  onClick={() => setPaymentMethod('CASH')}
-                  className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center text-xs font-semibold transition ${paymentMethod === 'CASH' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  onClick={() => setPaymentMethod('EFECTIVO')}
+                  className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center text-xs font-semibold transition ${paymentMethod === 'EFECTIVO' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                 >
                   <Banknote size={20} className="mb-1" /> Efectivo
                 </button>
                 <button
-                  onClick={() => setPaymentMethod('TRANSFER')}
-                  className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center text-xs font-semibold transition ${paymentMethod === 'TRANSFER' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  onClick={() => setPaymentMethod('TRANSFERENCIA')}
+                  className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center text-xs font-semibold transition ${paymentMethod === 'TRANSFERENCIA' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                 >
                   <Landmark size={20} className="mb-1" /> Transf.
                 </button>
                 <button
-                  onClick={() => setPaymentMethod('CARD')}
-                  className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center text-xs font-semibold transition ${paymentMethod === 'CARD' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  onClick={() => setPaymentMethod('TARJETA')}
+                  className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center text-xs font-semibold transition ${paymentMethod === 'TARJETA' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                 >
                   <CreditCard size={20} className="mb-1" /> Tarjeta
                 </button>
@@ -365,7 +443,7 @@ export default function Sales() {
               onClick={() => {
                 const headers = ['ID Venta', 'Fecha', 'Método Pago', 'Total Pagado', 'Productos (Cant x Nombre)'];
                 const rows = salesHistory.map(sale => {
-                  const date = new Date(sale.created_at).toLocaleString();
+                  const date = sale.sale_date ? sale.sale_date : new Date(sale.created_at).toLocaleDateString();
                   const products = sale.details?.map((d: any) => `${d.quantity}x ${d.product_name}`).join(' | ') || '';
                   return [
                     sale.id.substring(0, 8),
@@ -409,13 +487,16 @@ export default function Sales() {
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Método</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Productos</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Total</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300 text-right">Recibo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {salesHistory.map((sale: any) => (
                     <tr key={sale.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{sale.id.substring(0, 8)}</td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{new Date(sale.created_at).toLocaleString()}</td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
+                        {sale.sale_date ? sale.sale_date : new Date(sale.created_at).toLocaleDateString()}
+                      </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-bold">{sale.payment_method}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">
                         {sale.details?.map((d: any, idx: number) => (
@@ -423,6 +504,15 @@ export default function Sales() {
                         ))}
                       </td>
                       <td className="px-6 py-4 font-black text-emerald-600 dark:text-emerald-400">${sale.total.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => printReceipt(sale)} 
+                          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 p-2 rounded-lg transition"
+                          title="Imprimir Recibo"
+                        >
+                          <Printer size={18} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

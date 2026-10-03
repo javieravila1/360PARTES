@@ -95,6 +95,32 @@ export default function Products() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
+    try {
+      await apiClient.delete(`/products/${id}`);
+      toast.success('Producto eliminado');
+      fetchData();
+    } catch (error) {
+      toast.error('Error al eliminar producto');
+    }
+  };
+
+  const handleEdit = (p: Product) => {
+    setSelectedProductId(p.id);
+    setFormData({
+      name: p.name,
+      sku: p.sku,
+      selling_price: p.selling_price,
+      cost_price: p.cost_price,
+      current_stock: p.current_stock,
+      image: p.image_url || '',
+      brand_id: (p as any).brand_id || '',
+      category_id: (p as any).category_id || '',
+    });
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -103,12 +129,17 @@ export default function Products() {
         brand_id: formData.brand_id || null,
         category_id: formData.category_id || null,
       };
-      await apiClient.post('/products/', payload);
-      toast.success('Producto creado exitosamente');
+      if (selectedProductId) {
+        await apiClient.put(`/products/${selectedProductId}`, payload);
+        toast.success('Producto actualizado exitosamente');
+      } else {
+        await apiClient.post('/products/', payload);
+        toast.success('Producto creado exitosamente');
+      }
       setShowModal(false);
       fetchData();
     } catch (error) {
-      toast.error('Error al crear producto');
+      toast.error('Error al guardar producto');
     }
   };
 
@@ -118,7 +149,11 @@ export default function Products() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-white">Inventario de Productos</h1>
         <button
           className="btn-primary"
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setSelectedProductId('');
+            setFormData({ name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: '' });
+            setShowModal(true);
+          }}
         >
           <Plus size={20} className="mr-2" /> Nuevo Producto
         </button>
@@ -177,8 +212,8 @@ export default function Products() {
                     <button onClick={() => { setSelectedProductId(p.id); setStockToAdd(0); setShowStockModal(true); }} className="text-emerald-600 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded text-xs font-bold transition">
                       + Stock
                     </button>
-                    <button className="text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
-                    <button className="text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
+                    <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
+                    <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))
@@ -213,7 +248,9 @@ export default function Products() {
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full transition-colors max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100 dark:text-white">Registrar Nuevo Producto</h2>
+            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100 dark:text-white">
+              {selectedProductId ? 'Editar Producto' : 'Registrar Nuevo Producto'}
+            </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
 

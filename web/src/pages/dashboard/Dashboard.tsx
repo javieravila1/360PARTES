@@ -14,12 +14,13 @@ export default function Dashboard() {
   
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('today');
+  const [chartTimeFilter, setChartTimeFilter] = useState('this_month');
 
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
       try {
-        const { data } = await apiClient.get(`/dashboard/?time_filter=${timeFilter}`);
+        const { data } = await apiClient.get(`/dashboard/?time_filter=${timeFilter}&chart_time_filter=${chartTimeFilter}`);
         setMetrics(data);
       } catch (error) {
         toast.error('Error al cargar métricas del dashboard');
@@ -28,7 +29,7 @@ export default function Dashboard() {
       }
     };
     if (currentBusiness) fetchMetrics();
-  }, [currentBusiness, timeFilter]);
+  }, [currentBusiness, timeFilter, chartTimeFilter]);
 
   const StatCard = ({ icon: Icon, title, value, textColor, glowColor }: any) => (
     <div className="floating-card p-6 flex items-center justify-between group overflow-hidden relative">
@@ -95,8 +96,8 @@ export default function Dashboard() {
               glowColor="bg-indigo-500"
             />
             <StatCard 
-              icon={DollarSign} title="Valor Inventario" 
-              value={`$${metrics.inventory_value.toLocaleString()}`}
+              icon={DollarSign} title="Ganancia" 
+              value={`$${(metrics.total_profit || 0).toLocaleString()}`}
               textColor="text-emerald-600 dark:text-emerald-400"
               glowColor="bg-emerald-500"
             />
@@ -131,6 +132,18 @@ export default function Dashboard() {
               <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 Evolución de Ventas
               </h3>
+              <select
+                value={chartTimeFilter}
+                onChange={(e) => setChartTimeFilter(e.target.value)}
+                className="appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 outline-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                <option value="today">Hoy</option>
+                <option value="this_week">Esta semana</option>
+                <option value="this_month">Este mes</option>
+                <option value="this_semester">Este semestre</option>
+                <option value="this_year">Este año</option>
+                <option value="all_time">Todo el tiempo</option>
+              </select>
             </div>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -170,13 +183,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="floating-card p-6 flex flex-col h-full">
               <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50">
                 <AlertTriangle size={18} className="text-rose-500 mr-2.5" />
                 Stock Crítico
               </h3>
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-3 overflow-y-auto max-h-60">
                 {metrics.low_stock.length === 0 ? (
                   <p className="text-slate-500 dark:text-slate-400 text-sm py-4 font-medium">Inventario totalmente saludable.</p>
                 ) : (
@@ -196,10 +209,34 @@ export default function Dashboard() {
 
             <div className="floating-card p-6 flex flex-col h-full">
               <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+                <Clock size={18} className="text-rose-500 mr-2.5" />
+                Créditos por Vencer
+              </h3>
+              <div className="flex-1 space-y-3 overflow-y-auto max-h-60">
+                {(!metrics.payable_alerts || metrics.payable_alerts.length === 0) ? (
+                  <p className="text-slate-500 dark:text-slate-400 text-sm py-4 font-medium">No hay créditos próximos a vencer.</p>
+                ) : (
+                  metrics.payable_alerts.map((p: any, i: number) => (
+                    <div key={i} className="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 flex justify-between items-center transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700 dark:text-slate-200 text-sm">{p.supplier_name}</span>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider mt-1 ${p.is_overdue ? 'text-rose-600' : 'text-amber-700'}`}>
+                          {p.is_overdue ? 'VENCIDO' : `Vence: ${p.due_date}`}
+                        </span>
+                      </div>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 text-sm">${p.balance.toLocaleString()}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="floating-card p-6 flex flex-col h-full">
+              <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50">
                 <ArrowUpRight size={18} className="text-emerald-500 mr-2.5" />
                 Top Ventas
               </h3>
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-3 overflow-y-auto max-h-60">
                 {metrics.top_sold.length === 0 ? (
                    <p className="text-slate-500 dark:text-slate-400 text-sm py-4 font-medium">Aún no hay datos suficientes.</p>
                 ) : metrics.top_sold.map((p: any, i: number) => (
@@ -216,7 +253,7 @@ export default function Dashboard() {
                 <ShoppingBag size={18} className="text-indigo-500 mr-2.5" />
                 Actividad Reciente
               </h3>
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-3 overflow-y-auto max-h-60">
                 {metrics.recent_activity.length === 0 ? (
                   <p className="text-slate-500 dark:text-slate-400 text-sm py-4 font-medium">No hay actividad reciente.</p>
                 ) : metrics.recent_activity.map((act: any, i: number) => (
