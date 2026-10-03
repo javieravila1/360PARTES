@@ -56,7 +56,7 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=360partes
       - MINIO_REGION=us-east-1
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost
+      - CORS_ORIGINS=*
     depends_on:
       db:
         condition: service_healthy

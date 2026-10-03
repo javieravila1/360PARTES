@@ -1,4 +1,4 @@
-﻿from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ACCESS_EXPIRE: int = 30
     JWT_REFRESH_EXPIRE: int = 1440
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "*"
     
     # MinIO
     MINIO_ENDPOINT: str = "localhost:9000"
