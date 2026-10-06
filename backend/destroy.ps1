@@ -82,7 +82,7 @@ if (Test-Path $DartFile) {
 "@
     
     # Expresión regular que busca el bloque "static String get baseUrl { ... }" y lo reemplaza con el original
-    $DartContent = $DartContent -replace '(?s)  static String get baseUrl \{.*?\}', $OriginalBaseUrlBlock
+    $DartContent = $DartContent -replace '(?s)  static String get baseUrl \{.*?\r?\n  \}', $OriginalBaseUrlBlock.TrimEnd()
     
     Set-Content -Path $DartFile -Value $DartContent
     Write-Host "Archivo api_client.dart restaurado a localhost / 10.0.2.2 exitosamente." -ForegroundColor Green
