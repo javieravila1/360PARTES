@@ -70,7 +70,7 @@ services:
     container_name: 360partes_web
     restart: always
     ports:
-      - "5173:5173"
+      - "80:5173"
     volumes:
       - ./web:/app
       - /app/node_modules

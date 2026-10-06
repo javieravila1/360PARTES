@@ -25,3 +25,7 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# AWS
+backend/aws-credentials.ps1
+*.pem
