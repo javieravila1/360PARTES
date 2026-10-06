@@ -136,6 +136,8 @@ if (Test-Path $DartFile) {
     # También arreglar si quedó arruinado (http:///api/v1)
     $DartContent = $DartContent -replace "http:///api/v1", "http://${PublicIp}:8000/api/v1"
     
+    # Flutter Web (navegador) se queda en el backend local para ver los mismos datos que la web local
+    $DartContent = $DartContent -replace "(if \(kIsWeb\) \{\s*return ')http://[^']+(';)", '${1}http://localhost:8000/api/v1${2}'
     Set-Content -Path $DartFile -Value $DartContent
     Write-Host "Archivo api_client.dart actualizado exitosamente con la IP $PublicIp" -ForegroundColor Green
 } else {
