@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -7,7 +7,7 @@ from alembic import context
 
 from app.infrastructure.database.models.base import Base
 from app.core.config import settings
-import app.models
+import app.infrastructure.database.models
 
 config = context.config
 

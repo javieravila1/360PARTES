@@ -5,6 +5,13 @@ import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landma
 import { useBusinessStore } from '../../store/businessStore';
 import { toast } from 'react-toastify';
 
+interface ProductBatch {
+  id: string;
+  current_stock: number;
+  cost_price: number;
+  selling_price: number;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -13,10 +20,13 @@ interface Product {
   current_stock: number;
   brand_id?: string;
   category_id?: string;
+  batches?: ProductBatch[];
 }
 
 interface CartItem extends Product {
   cart_quantity: number;
+  cart_key: string;
+  batch_id?: string;
 }
 
 export default function Sales() {
@@ -44,20 +54,29 @@ export default function Sales() {
   const [saleDate, setSaleDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [filterBrandId, setFilterBrandId] = useState<string>('');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('');
+  const [batchModalProduct, setBatchModalProduct] = useState<Product | null>(null);
 
   // History States
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentBusiness) {
+      fetchData();
+    }
+    const handler = () => { if (currentBusiness) fetchData(); };
+    window.addEventListener('db_updated', handler);
+    return () => window.removeEventListener('db_updated', handler);
+  }, [currentBusiness]);
 
   useEffect(() => {
-    if (activeTab === 'HISTORY') {
+    if (activeTab === 'HISTORY' && currentBusiness) {
       fetchHistory();
     }
-  }, [activeTab]);
+    const handler = () => { if (activeTab === 'HISTORY' && currentBusiness) fetchHistory(); };
+    window.addEventListener('db_updated', handler);
+    return () => window.removeEventListener('db_updated', handler);
+  }, [activeTab, currentBusiness]);
 
   const fetchData = async () => {
     try {
@@ -99,31 +118,47 @@ export default function Sales() {
     return matchesSearch && matchesBrand && matchesCategory;
   });
 
-  const updatePrice = (id: string, newPrice: number) => {
-    setCart(prev => prev.map(item => item.id === id ? { ...item, selling_price: newPrice } : item));
+  const updatePrice = (cart_key: string, newPrice: number) => {
+    setCart(prev => prev.map(item => item.cart_key === cart_key ? { ...item, selling_price: newPrice } : item));
   };
 
-  const addToCart = (product: Product) => {
-    if (product.current_stock <= 0) {
-      toast.warning('Producto agotado');
+  const addToCart = (product: Product, selectedBatch?: ProductBatch) => {
+    const availableBatches = (product.batches || []).filter(b => b.current_stock > 0);
+    
+    if (!selectedBatch && availableBatches.length === 1) {
+      selectedBatch = availableBatches[0];
+    } else if (!selectedBatch && availableBatches.length > 1) {
+      setBatchModalProduct(product);
       return;
     }
+
+    const currentStock = selectedBatch ? selectedBatch.current_stock : product.current_stock;
+    const sellingPrice = selectedBatch ? selectedBatch.selling_price : product.selling_price;
+    const batchId = selectedBatch ? selectedBatch.id : undefined;
+    const cartKey = batchId ? `${product.id}-${batchId}` : product.id;
+
+    if (currentStock <= 0) {
+      toast.warning('Producto o lote agotado');
+      return;
+    }
+
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      const existing = prev.find(item => item.cart_key === cartKey);
       if (existing) {
-        if (existing.cart_quantity >= product.current_stock) {
-          toast.warning('Stock máximo alcanzado para este producto');
+        if (existing.cart_quantity >= currentStock) {
+          toast.warning('Stock máximo alcanzado para este lote');
           return prev;
         }
-        return prev.map(item => item.id === product.id ? { ...item, cart_quantity: item.cart_quantity + 1 } : item);
+        return prev.map(item => item.cart_key === cartKey ? { ...item, cart_quantity: item.cart_quantity + 1 } : item);
       }
-      return [...prev, { ...product, cart_quantity: 1 }];
+      return [...prev, { ...product, cart_quantity: 1, selling_price: sellingPrice, current_stock: currentStock, batch_id: batchId, cart_key: cartKey }];
     });
+    setBatchModalProduct(null);
   };
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = (cart_key: string, delta: number) => {
     setCart(prev => prev.map(item => {
-      if (item.id === id) {
+      if (item.cart_key === cart_key) {
         const newQ = item.cart_quantity + delta;
         if (newQ > item.current_stock) {
           toast.warning('No hay más stock disponible');
@@ -135,8 +170,8 @@ export default function Sales() {
     }));
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+  const removeFromCart = (cart_key: string) => {
+    setCart(prev => prev.filter(item => item.cart_key !== cart_key));
   };
 
   const subtotal = cart.reduce((acc, item) => acc + (item.selling_price * item.cart_quantity), 0);
@@ -231,6 +266,7 @@ export default function Sales() {
       payment_status: 'PAID',
       details: cart.map(item => ({
         product_id: item.id,
+        batch_id: item.batch_id || null,
         quantity: item.cart_quantity,
         unit_price: item.selling_price,
         discount: 0
@@ -350,27 +386,29 @@ export default function Sales() {
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} className="bg-white dark:bg-slate-700 p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center shadow-sm">
+                  <div key={item.cart_key} className="bg-white dark:bg-slate-700 p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center shadow-sm">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-slate-800 dark:text-white text-sm line-clamp-1">{item.name}</h4>
+                      <h4 className="font-semibold text-slate-800 dark:text-white text-sm line-clamp-1">
+                        {item.name} {item.batch_id && <span className="text-xs font-normal text-indigo-500 ml-1">(Lote: {item.batch_id.substring(0,6)})</span>}
+                      </h4>
                       <div className="flex items-center mt-1 gap-1">
                         <span className="text-[10px] font-bold text-slate-500 uppercase mr-1">Precio Venta:</span>
                         <span className="text-slate-500 font-bold">$</span>
                         <input
                           type="number"
                           value={item.selling_price}
-                          onChange={e => updatePrice(item.id, Number(e.target.value))}
+                          onChange={e => updatePrice(item.cart_key, Number(e.target.value))}
                           className="w-20 bg-slate-50 dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded px-1 py-0.5 text-sm font-bold text-blue-600 dark:text-blue-400 outline-none"
                         />
                       </div>
                     </div>
                     <div className="flex items-center space-x-3 ml-2">
                       <div className="flex items-center bg-slate-100 dark:bg-slate-600 rounded-lg p-1">
-                        <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-white dark:hover:bg-slate-500 rounded text-slate-600 dark:text-slate-300"><Minus size={16} /></button>
+                        <button onClick={() => updateQuantity(item.cart_key, -1)} className="p-1 hover:bg-white dark:hover:bg-slate-500 rounded text-slate-600 dark:text-slate-300"><Minus size={16} /></button>
                         <span className="w-8 text-center font-semibold text-sm">{item.cart_quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-white dark:hover:bg-slate-500 rounded text-slate-600 dark:text-slate-300"><Plus size={16} /></button>
+                        <button onClick={() => updateQuantity(item.cart_key, 1)} className="p-1 hover:bg-white dark:hover:bg-slate-500 rounded text-slate-600 dark:text-slate-300"><Plus size={16} /></button>
                       </div>
-                      <button onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={18} /></button>
+                      <button onClick={() => removeFromCart(item.cart_key)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))
@@ -446,7 +484,7 @@ export default function Sales() {
                   const date = sale.sale_date ? sale.sale_date : new Date(sale.created_at).toLocaleDateString();
                   const products = sale.details?.map((d: any) => `${d.quantity}x ${d.product_name}`).join(' | ') || '';
                   return [
-                    sale.id.substring(0, 8),
+                    sale.invoice_number || sale.id.substring(0, 8),
                     `"${date}"`,
                     sale.payment_method,
                     sale.total,
@@ -493,7 +531,7 @@ export default function Sales() {
                 <tbody>
                   {salesHistory.map((sale: any) => (
                     <tr key={sale.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{sale.id.substring(0, 8)}</td>
+                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{sale.invoice_number || sale.id.substring(0, 8)}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
                         {sale.sale_date ? sale.sale_date : new Date(sale.created_at).toLocaleDateString()}
                       </td>
@@ -544,6 +582,54 @@ export default function Sales() {
           )}
         </div>
       )}
+
+      {/* Modal Seleccionar Lote */}
+      {batchModalProduct && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-md transition-colors">
+            <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100 flex items-center">
+              Seleccionar Lote
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">El producto <b>{batchModalProduct.name}</b> tiene varios lotes de inventario disponibles con precios distintos. Selecciona de cuál lote vas a vender:</p>
+            
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {(batchModalProduct.batches || []).filter(b => b.current_stock > 0).map(batch => (
+                <button 
+                  key={batch.id}
+                  onClick={() => addToCart(batchModalProduct, batch)}
+                  className="w-full flex justify-between items-center bg-slate-50 dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-left transition-all group"
+                >
+                  <div>
+                    <div className="text-xs text-slate-400 font-bold mb-1">ID: {batch.id.substring(0,8)}</div>
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Costo: ${Number(batch.cost_price).toLocaleString()}
+                    </div>
+                    <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                      Precio: ${Number(batch.selling_price).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-3 py-1 rounded-full text-xs font-bold block mb-2">
+                      {batch.current_stock} un. Disp.
+                    </span>
+                    <span className="text-indigo-500 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Vender &rarr;</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <button 
+                onClick={() => setBatchModalProduct(null)} 
+                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-bold"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

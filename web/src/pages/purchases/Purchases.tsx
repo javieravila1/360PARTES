@@ -62,8 +62,10 @@ export default function Purchases() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentBusiness) {
+      fetchData();
+    }
+  }, [currentBusiness]);
 
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();

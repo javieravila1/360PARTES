@@ -11,6 +11,7 @@ from app.infrastructure.database.models.sale import Sale, SaleDetail
 from app.infrastructure.database.models.product import Product
 from app.infrastructure.database.models.expense import Expense
 from app.infrastructure.database.models.debt import Debt
+from app.infrastructure.database.models.inventory import ProductBatch
 
 from datetime import datetime, timedelta
 
@@ -81,11 +82,13 @@ async def get_dashboard_metrics(
 
     # Ganancia (Profit) = Total Venta Detalle - (Costo * Cantidad)
     stmt_profit = select(
-        func.sum(SaleDetail.total - (func.coalesce(Product.cost_price, 0) * SaleDetail.quantity))
+        func.sum(SaleDetail.total - (func.coalesce(ProductBatch.cost_price, Product.cost_price, 0) * SaleDetail.quantity))
     ).select_from(SaleDetail).join(
         Sale, Sale.id == SaleDetail.sale_id
     ).outerjoin(
         Product, SaleDetail.product_id == Product.id
+    ).outerjoin(
+        ProductBatch, SaleDetail.batch_id == ProductBatch.id
     ).where(*cond_sales)
     
     result_profit = await db.execute(stmt_profit)

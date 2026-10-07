@@ -12,9 +12,9 @@ class ApiClient {
     if (kIsWeb) {
       return 'http://localhost:8000/api/v1'; // Para Flutter Web
     } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api/v1'; // Para Android Emulator
+      return 'http://98.82.141.34:8000/api/v1'; // Para Android Emulator
     } else {
-      return 'http://localhost:8000/api/v1'; // Para iOS Simulator u otros
+      return 'http://98.82.141.34:8000/api/v1'; // Para iOS Simulator u otros
     }
   }
 
@@ -48,3 +48,6 @@ class ApiClient {
 }
 
 final apiClient = ApiClient().dio;
+
+
+

@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from sqlalchemy import String, Boolean, ForeignKey, Numeric, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -23,4 +23,16 @@ class InventoryMovement(BaseModel):
     business: Mapped["Business"] = relationship()
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
+
+class ProductBatch(BaseModel):
+    __tablename__ = "product_batches"
+
+    business_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    
+    current_stock: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    cost_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    selling_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    
+    product: Mapped["Product"] = relationship(back_populates="batches")
 

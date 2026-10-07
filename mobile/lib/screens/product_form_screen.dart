@@ -6,6 +6,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
 import '../providers/inventory_provider.dart';
+import '../providers/businesses_provider.dart';
 import '../api/api_client.dart';
 import '../widgets/form_widgets.dart';
 
@@ -35,6 +36,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   String? _selectedBrandName;
 
   bool _trackInventory = true;
+  List<String> _extraBusinessIds = [];
 
   @override
   void initState() {
@@ -101,6 +103,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       };
 
       if (widget.product == null) {
+        payload["extra_business_ids"] = _extraBusinessIds;
         await apiClient.post('/products/', data: payload);
       } else {
         await apiClient.put('/products/${widget.product!['id']}', data: payload);
@@ -285,6 +288,61 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                         ),
                       ],
                     ),
+                    if (widget.product == null) ...[
+                      const SizedBox(height: 24),
+                      FormSection(
+                        title: 'Copiar a otros negocios (Opcional)',
+                        icon: PhosphorIconsRegular.copy,
+                        children: [
+                          Consumer(
+                            builder: (context, ref, child) {
+                              final businessesAsync = ref.watch(businessesProvider);
+                              final currentBusiness = ref.watch(currentBusinessProvider);
+                              
+                              return businessesAsync.when(
+                                loading: () => const Center(child: CircularProgressIndicator()),
+                                error: (err, stack) => Text('Error: $err'),
+                                data: (items) {
+                                  final otherBusinesses = items.where((b) {
+                                    final bus = b['business'];
+                                    return bus['id'] != currentBusiness?['id'];
+                                  }).toList();
+                                  
+                                  if (otherBusinesses.isEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                                      child: Text('No tienes otros negocios.', style: TextStyle(color: Colors.grey)),
+                                    );
+                                  }
+                                  
+                                  return Column(
+                                    children: otherBusinesses.map((b) {
+                                      final bus = b['business'];
+                                      final id = bus['id'].toString();
+                                      return CheckboxListTile(
+                                        title: Text(bus['name']),
+                                        value: _extraBusinessIds.contains(id),
+                                        onChanged: (val) {
+                                          setState(() {
+                                            if (val == true) {
+                                              _extraBusinessIds.add(id);
+                                            } else {
+                                              _extraBusinessIds.remove(id);
+                                            }
+                                          });
+                                        },
+                                        controlAffinity: ListTileControlAffinity.leading,
+                                        contentPadding: EdgeInsets.zero,
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

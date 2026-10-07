@@ -156,6 +156,85 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
+  void _showAddStockSheet(Map<String, dynamic> product) {
+    final qtyCtrl = TextEditingController();
+    final costCtrl = TextEditingController(text: (product['cost_price'] ?? '').toString());
+    final priceCtrl = TextEditingController(text: (product['selling_price'] ?? '').toString());
+    bool isSaving = false;
+
+    showFormSheet(
+      context: context,
+      title: 'Añadir Stock: ${product['name']}',
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppField(
+              label: 'Cantidad a ingresar',
+              controller: qtyCtrl,
+              required: true,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: AppField.money(
+                    label: 'Costo Unitario',
+                    controller: costCtrl,
+                    required: true,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: AppField.money(
+                    label: 'Precio de Venta',
+                    controller: priceCtrl,
+                    required: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Añadir Stock',
+              loading: isSaving,
+              onPressed: () async {
+                final qty = double.tryParse(qtyCtrl.text);
+                final cost = double.tryParse(costCtrl.text);
+                final price = double.tryParse(priceCtrl.text);
+                
+                if (qty == null || qty <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cantidad inválida')));
+                  return;
+                }
+
+                setModalState(() => isSaving = true);
+                try {
+                  await apiClient.patch('/products/${product['id']}/stock', data: {
+                    "quantity": qty,
+                    "cost_price": cost,
+                    "selling_price": price
+                  });
+                  ref.invalidate(inventoryProvider);
+                  if (!c.mounted) return;
+                  Navigator.pop(c);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stock añadido exitosamente')));
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                } finally {
+                  if (mounted) setModalState(() => isSaving = false);
+                }
+              },
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final inventoryAsync = ref.watch(inventoryProvider);
@@ -232,6 +311,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           // Lista de Productos
           Expanded(
             child: inventoryAsync.when(
+              skipLoadingOnReload: true,
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
                 child: Text('Error: $error', style: const TextStyle(color: Colors.red)),
@@ -329,9 +409,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               },
                             );
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Agregar stock próximamente')),
-                            );
+                            _showAddStockSheet(product);
                             return false;
                           }
                         },
@@ -431,12 +509,26 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                '$stock unds',
-                                style: TextStyle(
-                                  color: isOut ? const Color(0xFFB91C1C) : (isLowStock ? const Color(0xFFB45309) : const Color(0xFF059669)),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                              GestureDetector(
+                                onTap: () => _showAddStockSheet(product),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$stock unds',
+                                      style: TextStyle(
+                                        color: isOut ? const Color(0xFFB91C1C) : (isLowStock ? const Color(0xFFB45309) : const Color(0xFF059669)),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      PhosphorIconsFill.plusCircle, 
+                                      size: 14, 
+                                      color: isOut ? const Color(0xFFB91C1C) : (isLowStock ? const Color(0xFFB45309) : const Color(0xFF059669))
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

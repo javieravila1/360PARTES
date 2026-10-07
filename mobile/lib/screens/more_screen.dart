@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/businesses_provider.dart';
 import 'entity_list_screen.dart';
 import 'sales_history_screen.dart';
+import 'returns_screen.dart';
 import 'statistics_screen.dart';
 import '../widgets/form_widgets.dart';
 
@@ -68,6 +69,8 @@ class MoreScreen extends ConsumerWidget {
             _item(context, isDark, icon: PhosphorIconsRegular.users, title: 'Clientes', subtitle: 'Gestiona tu cartera de clientes', onTap: () => open(const EntityListScreen(entityType: EntityType.customers))),
             _divider(isDark),
             _item(context, isDark, icon: PhosphorIconsRegular.truck, title: 'Proveedores', subtitle: 'Administra tus proveedores', onTap: () => open(const EntityListScreen(entityType: EntityType.suppliers))),
+            _divider(isDark),
+            _item(context, isDark, icon: PhosphorIconsRegular.arrowUUpLeft, title: 'Devoluciones', subtitle: 'Reversa ventas y stock', onTap: () => open(const ReturnsScreen())),
           ]),
           const SizedBox(height: 24),
           _sectionLabel('CATÁLOGO', muted),

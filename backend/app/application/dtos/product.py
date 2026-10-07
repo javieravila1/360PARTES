@@ -1,4 +1,4 @@
-﻿from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 import uuid
 from datetime import datetime
@@ -35,16 +35,31 @@ class ProductBase(BaseModel):
     notes: Optional[str] = None
 
 class ProductCreate(ProductBase):
-    pass
+    # Negocios adicionales (además del activo) donde también se creará el producto
+    extra_business_ids: List[uuid.UUID] = []
 
 class ProductUpdate(ProductBase):
     name: Optional[str] = None
+
+class ProductBatchResponse(BaseModel):
+    id: uuid.UUID
+    business_id: uuid.UUID
+    product_id: uuid.UUID
+    current_stock: float
+    cost_price: float
+    selling_price: float
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class ProductResponse(ProductBase):
     id: uuid.UUID
     business_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    batches: List[ProductBatchResponse] = []
 
     class Config:
         from_attributes = True

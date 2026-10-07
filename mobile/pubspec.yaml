@@ -42,6 +42,7 @@ dependencies:
   lucide_icons: 0.257.0
   phosphoricons_flutter: ^1.0.0
   phosphor_flutter: any
+  web_socket_channel: ^3.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

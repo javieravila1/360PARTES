@@ -5,6 +5,7 @@ from datetime import datetime
 
 class SaleDetailBase(BaseModel):
     product_id: uuid.UUID
+    batch_id: Optional[uuid.UUID] = None
     quantity: float
     unit_price: float
     discount: float = 0.0
@@ -28,6 +29,7 @@ class SaleCreate(SaleBase):
 
 class SaleResponse(SaleBase):
     id: uuid.UUID
+    invoice_number: Optional[str] = None
     business_id: uuid.UUID
     user_id: Optional[uuid.UUID] = None
     created_at: datetime

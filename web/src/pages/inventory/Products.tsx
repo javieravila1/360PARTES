@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import apiClient from '../../api/client';
 import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useBusinessStore } from '../../store/businessStore';
 
 interface Product {
   id: string;
@@ -20,7 +21,9 @@ interface Brand { id: string; name: string; }
 interface Category { id: string; name: string; }
 
 export default function Products() {
+  const { currentBusiness } = useBusinessStore();
   const [products, setProducts] = useState<Product[]>([]);
+  const [userBusinesses, setUserBusinesses] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
@@ -41,17 +44,22 @@ export default function Products() {
 
   const [selectedProductId, setSelectedProductId] = useState('');
   const [stockToAdd, setStockToAdd] = useState(0);
-  const [formData, setFormData] = useState({
-    name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: ''
+  const [costPriceToAdd, setCostPriceToAdd] = useState(0);
+  const [sellingPriceToAdd, setSellingPriceToAdd] = useState(0);
+  const [formData, setFormData] = useState<{
+    name: string, sku: string, selling_price: number, cost_price: number, current_stock: number, image: string, brand_id: string, category_id: string, extra_business_ids: string[]
+  }>({
+    name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: '', extra_business_ids: []
   });
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [prodRes, brandsRes, catRes] = await Promise.all([
+      const [prodRes, brandsRes, catRes, busRes] = await Promise.all([
         apiClient.get('/products/'),
         apiClient.get('/brands/'),
-        apiClient.get('/categories/')
+        apiClient.get('/categories/'),
+        apiClient.get('/businesses/')
       ]);
       setProducts(prodRes.data.map((p: any) => ({
         ...p,
@@ -62,6 +70,9 @@ export default function Products() {
       })));
       setBrands(brandsRes.data);
       setCategories(catRes.data);
+      if (currentBusiness) {
+        setUserBusinesses(busRes.data.map((b: any) => b.business).filter((b: any) => b.id !== currentBusiness.id));
+      }
     } catch (error) {
       toast.error('Error al cargar datos');
     } finally {
@@ -70,8 +81,13 @@ export default function Products() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentBusiness) {
+      fetchData();
+    }
+    const handler = () => { if (currentBusiness) fetchData(); };
+    window.addEventListener('db_updated', handler);
+    return () => window.removeEventListener('db_updated', handler);
+  }, [currentBusiness]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,6 +133,7 @@ export default function Products() {
       image: p.image_url || '',
       brand_id: (p as any).brand_id || '',
       category_id: (p as any).category_id || '',
+      extra_business_ids: [],
     });
     setShowModal(true);
   };
@@ -151,7 +168,7 @@ export default function Products() {
           className="btn-primary"
           onClick={() => {
             setSelectedProductId('');
-            setFormData({ name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: '' });
+            setFormData({ name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: '', extra_business_ids: [] });
             setShowModal(true);
           }}
         >
@@ -209,7 +226,7 @@ export default function Products() {
                     }} className="text-blue-600 hover:text-blue-800 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded text-xs font-bold transition">
                       Historial
                     </button>
-                    <button onClick={() => { setSelectedProductId(p.id); setStockToAdd(0); setShowStockModal(true); }} className="text-emerald-600 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded text-xs font-bold transition">
+                    <button onClick={() => { setSelectedProductId(p.id); setStockToAdd(0); setCostPriceToAdd(p.cost_price); setSellingPriceToAdd(p.selling_price); setShowStockModal(true); }} className="text-emerald-600 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded text-xs font-bold transition">
                       + Stock
                     </button>
                     <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
@@ -296,6 +313,33 @@ export default function Products() {
                       </select>
                     </div>
                   </div>
+
+                  {!selectedProductId && userBusinesses.length > 0 && (
+                    <div className="col-span-2 pt-2">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">
+                        Copiar a otros de mis negocios (Opcional)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {userBusinesses.map(b => (
+                          <label key={b.id} className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={formData.extra_business_ids.includes(b.id)}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setFormData(prev => ({ ...prev, extra_business_ids: [...prev.extra_business_ids, b.id] }));
+                                } else {
+                                  setFormData(prev => ({ ...prev, extra_business_ids: prev.extra_business_ids.filter(id => id !== b.id) }));
+                                }
+                              }}
+                              className="rounded text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                            />
+                            <span className="text-sm text-slate-700 dark:text-slate-200 font-medium">{b.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="w-1/3 flex flex-col items-center">
@@ -355,12 +399,38 @@ export default function Products() {
                 className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-lg text-center font-bold transition-all outline-none" 
               />
             </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Nuevo Costo ($)</label>
+                <input 
+                  type="text" 
+                  inputMode="decimal"
+                  value={costPriceToAdd || ''} 
+                  onChange={e => setCostPriceToAdd(Number(e.target.value.replace(/[^0-9.]/g, '')))}
+                  className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Nuevo P. Venta ($)</label>
+                <input 
+                  type="text" 
+                  inputMode="decimal"
+                  value={sellingPriceToAdd || ''} 
+                  onChange={e => setSellingPriceToAdd(Number(e.target.value.replace(/[^0-9.]/g, '')))}
+                  className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" 
+                />
+              </div>
+            </div>
             <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button type="button" onClick={() => setShowStockModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg">Cancelar</button>
               <button type="button" onClick={async () => {
                 if (stockToAdd <= 0) return toast.warning('Ingrese una cantidad válida');
                 try {
-                  await apiClient.patch(`/products/${selectedProductId}/stock`, { quantity: stockToAdd });
+                  await apiClient.patch(`/products/${selectedProductId}/stock`, { 
+                    quantity: stockToAdd, 
+                    cost_price: costPriceToAdd, 
+                    selling_price: sellingPriceToAdd 
+                  });
                   toast.success('Stock actualizado');
                   setShowStockModal(false);
                   fetchData();

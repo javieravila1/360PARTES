@@ -3,7 +3,7 @@ import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useBusinessStore } from '../store/businessStore';
 import { useAuthStore } from '../store/authStore';
 import apiClient from '../api/client';
-import { LogOut, ChevronDown, Store, Package, ShoppingCart, Users, Tag, FolderTree, Truck, LayoutDashboard, Settings, Sun, Moon } from 'lucide-react';
+import { LogOut, ChevronDown, Store, Package, ShoppingCart, Users, Tag, FolderTree, Truck, LayoutDashboard, Settings, Sun, Moon, Undo2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface Business {
@@ -52,6 +52,21 @@ export default function Layout() {
       }
     };
     fetchBusinesses();
+
+    // WebSocket Connection
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // For localhost dev, use localhost:8000. In production, use the same host.
+    // apiClient base URL is usually http://localhost:8000/api/v1
+    const wsUrl = apiClient.defaults.baseURL?.replace('http', 'ws') + '/ws' || `${protocol}//${window.location.hostname}:8000/api/v1/ws`;
+    
+    const ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+      if (event.data === currentBusiness.id || event.data === "all") {
+        window.dispatchEvent(new Event('db_updated'));
+      }
+    };
+    
+    return () => ws.close();
   }, [currentBusiness, navigate]);
 
   const handleLogout = () => {
@@ -124,6 +139,7 @@ export default function Layout() {
           <NavItem to="/purchases" icon={Truck} label="Compras & Gastos" />
           <NavItem to="/customers" icon={Users} label="Clientes" />
           <NavItem to="/suppliers" icon={Store} label="Proveedores" />
+          <NavItem to="/returns" icon={Undo2} label="Devoluciones" />
         </nav>
         
         <div className="p-4">

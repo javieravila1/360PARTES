@@ -42,10 +42,10 @@ export default function BusinessSelect() {
     navigate('/dashboard');
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Cargando...</div>;
+  if (loading) return <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 flex items-center justify-center">Cargando...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-8 transition-colors">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Mis Negocios</h1>
         <p className="text-slate-600 dark:text-slate-300 mb-8">¿Qué negocio quieres administrar?</p>
@@ -55,13 +55,13 @@ export default function BusinessSelect() {
             <div 
               key={business.id} 
               onClick={() => handleSelect(business)}
-              className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:border-blue-500 transition cursor-pointer flex flex-col items-center text-center group"
+              className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg dark:hover:shadow-slate-900/50 hover:border-blue-500 dark:hover:border-blue-400 transition cursor-pointer flex flex-col items-center text-center group"
             >
               <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
                 <Store size={32} />
               </div>
               <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{business.name}</h2>
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-2 bg-slate-100 px-3 py-1 rounded-full">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-2 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
                 {role}
               </span>
             </div>
@@ -69,7 +69,7 @@ export default function BusinessSelect() {
 
           <div 
             onClick={() => navigate('/businesses/new')}
-            className="bg-slate-100 border-2 border-dashed border-slate-300 p-6 rounded-2xl hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 hover:text-blue-600"
+            className="bg-slate-100 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-700 p-6 rounded-2xl hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition cursor-pointer flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
           >
             <Plus size={48} className="mb-2" />
             <span className="font-semibold">Crear Nuevo Negocio</span>

@@ -29,6 +29,10 @@ export default function Dashboard() {
       }
     };
     if (currentBusiness) fetchMetrics();
+
+    const handler = () => { if (currentBusiness) fetchMetrics(); };
+    window.addEventListener('db_updated', handler);
+    return () => window.removeEventListener('db_updated', handler);
   }, [currentBusiness, timeFilter, chartTimeFilter]);
 
   const StatCard = ({ icon: Icon, title, value, textColor, glowColor }: any) => (

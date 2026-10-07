@@ -22,6 +22,7 @@ class Sale(BaseModel):
     payment_status: Mapped[str] = mapped_column(String) # PAID, PENDING, PARTIAL
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
     receipt_url: Mapped[str | None] = mapped_column(String, nullable=True) # PDF on MinIO
+    invoice_number: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
 
     business: Mapped["Business"] = relationship()
     customer: Mapped["Customer"] = relationship()
@@ -33,6 +34,7 @@ class SaleDetail(BaseModel):
 
     sale_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sales.id", ondelete="CASCADE"), index=True)
     product_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("product_batches.id", ondelete="SET NULL"), nullable=True)
     
     quantity: Mapped[float] = mapped_column(Numeric(12, 2))
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2))

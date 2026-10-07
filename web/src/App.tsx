@@ -13,6 +13,7 @@ import Sales from './pages/sales/Sales';
 import Purchases from './pages/purchases/Purchases';
 import Suppliers from './pages/purchases/Suppliers';
 import Customers from './pages/sales/Customers';
+import Returns from './pages/sales/Returns';
 import Layout from './components/Layout';
 import { useAuthStore } from './store/authStore';
 
@@ -52,6 +53,7 @@ function App() {
           <Route path="products" element={<Products />} />
           <Route path="inventory" element={<Products />} />
           <Route path="customers" element={<Customers />} />
+          <Route path="returns" element={<Returns />} />
           <Route path="suppliers" element={<Suppliers />} />
           
           <Route index element={<Navigate to="/dashboard" replace />} />

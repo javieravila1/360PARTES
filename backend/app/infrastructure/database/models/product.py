@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from sqlalchemy import String, Boolean, ForeignKey, Numeric, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -45,4 +45,5 @@ class Product(BaseModel):
     business: Mapped["Business"] = relationship()
     brand: Mapped["Brand"] = relationship()
     category: Mapped["Category"] = relationship()
+    batches: Mapped[list["ProductBatch"]] = relationship(back_populates="product", cascade="all, delete-orphan", lazy="selectin")
 

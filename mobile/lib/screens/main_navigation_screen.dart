@@ -8,6 +8,7 @@ import 'pos_screen.dart';
 import 'expenses_screen.dart';
 import 'more_screen.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/websocket_provider.dart';
 
 class MainNavigationScreen extends ConsumerWidget {
   const MainNavigationScreen({super.key});
@@ -23,6 +24,7 @@ class MainNavigationScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(navigationIndexProvider);
+    ref.watch(websocketProvider); // Mantener conexión websocket viva
 
     return Scaffold(
       body: IndexedStack(

@@ -44,49 +44,55 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  void _askForFinalPrice(BuildContext context, WidgetRef ref, Map<String, dynamic> product) {
-    final suggestedPrice = double.tryParse(product['selling_price']?.toString() ?? '0') ?? 0.0;
-    final ctrl = TextEditingController();
+  void _handleAddToCart(BuildContext context, WidgetRef ref, Map<String, dynamic> p) {
+    final batches = (p['batches'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    if (batches.isEmpty) {
+      _addToCartDirectly(context, ref, p);
+      return;
+    }
     
+    final availableBatches = batches.where((b) => (b['current_stock'] as num? ?? 0) > 0).toList();
+    if (availableBatches.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay lotes con stock')));
+      return;
+    }
+
+    if (availableBatches.length == 1) {
+      _addToCartDirectly(context, ref, p, availableBatches.first);
+      return;
+    }
+
     showFormSheet(
       context: context,
-      title: 'Precio Final',
-      subtitle: product['name'],
+      title: 'Seleccionar Lote',
+      subtitle: p['name'],
       builder: (c, setModalState) {
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-              child: Column(
-                children: [
-                  Text('Sugerido', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text('\$${suggestedPrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            AppField.money(
-              label: 'Precio de venta',
-              controller: ctrl,
-              required: true,
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 24),
-            AppButton(
-              label: 'Agregar al Carrito',
-              onPressed: () {
-                final finalPrice = double.tryParse(ctrl.text) ?? suggestedPrice;
-                ref.read(cartProvider.notifier).addProductWithPrice(product, finalPrice);
+          children: availableBatches.map((b) {
+            final date = DateTime.tryParse(b['created_at'] ?? '')?.toLocal().toString().split(' ')[0] ?? '';
+            return ListTile(
+              title: Text('Venta Sugerida: \$${b['selling_price']}'),
+              subtitle: Text('Stock: ${b['current_stock']} | Costo: \$${b['cost_price']}'),
+              trailing: const Icon(PhosphorIconsRegular.caretRight),
+              onTap: () {
                 Navigator.pop(c);
+                _addToCartDirectly(context, ref, p, b);
               },
-              icon: PhosphorIconsRegular.shoppingCart,
-            ),
-          ],
+            );
+          }).toList(),
         );
       },
     );
+  }
+
+  void _addToCartDirectly(BuildContext context, WidgetRef ref, Map<String, dynamic> product, [Map<String, dynamic>? batch]) {
+    final suggestedPrice = batch != null ? double.tryParse(batch['selling_price']?.toString() ?? '0') ?? 0.0 : double.tryParse(product['selling_price']?.toString() ?? '0') ?? 0.0;
+    ref.read(cartProvider.notifier).addProductWithPrice(product, suggestedPrice, batch: batch);
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('${product['name']} agregado al carrito'),
+      duration: const Duration(seconds: 1),
+    ));
   }
 
   @override
@@ -163,6 +169,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           // Lista de Productos
           Expanded(
             child: inventoryAsync.when(
+              skipLoadingOnReload: true,
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, st) => Center(child: Text('Error: $e')),
               data: (products) {
@@ -189,8 +196,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     final suggestedPrice = double.tryParse(p['selling_price']?.toString() ?? '0') ?? 0.0;
                     
                     // Buscar si está en el carrito
-                    final cartIndex = cartItems.indexWhere((item) => item.product['id'] == p['id']);
-                    final cartQty = cartIndex >= 0 ? cartItems[cartIndex].quantity : 0;
+                    final cartQty = cartItems.where((item) => item.product['id'] == p['id']).fold(0, (sum, item) => sum + item.quantity);
+
                     
                     return Card(
                       elevation: 0,
@@ -237,40 +244,15 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                                 child: Text('AGOTADO', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
                               )
-                            else if (cartQty == 0)
+                            else
                               OutlinedButton(
-                                onPressed: () => _askForFinalPrice(context, ref, p),
+                                onPressed: () => _handleAddToCart(context, ref, p),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size(0, 38),
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
-                                child: const Text('Agregar'),
-                              )
-                            else
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1F2A3D) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(PhosphorIconsRegular.minus, size: 18),
-                                      onPressed: () => ref.read(cartProvider.notifier).updateQuantity(p['id'], cartQty - 1),
-                                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    Text('$cartQty', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                                    IconButton(
-                                      icon: const Icon(PhosphorIconsRegular.plus, size: 18),
-                                      onPressed: cartQty < stock ? () => ref.read(cartProvider.notifier).updateQuantity(p['id'], cartQty + 1) : null,
-                                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                  ],
-                                ),
+                                child: Text(cartQty > 0 ? 'En carrito ($cartQty)' : 'Agregar'),
                               )
                           ],
                         ),
@@ -385,6 +367,7 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
       final details = cartItems.map((item) {
         return {
           "product_id": item.product['id'],
+          "batch_id": item.batch?['id'],
           "quantity": item.quantity,
           "unit_price": item.unitPrice,
           "discount": 0
@@ -429,7 +412,7 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
     }
   }
 
-  void _showPriceEditor(BuildContext context, String productId, double currentPrice) {
+  void _showPriceEditor(BuildContext context, String cartKey, double currentPrice) {
     final ctrl = TextEditingController(text: currentPrice.toStringAsFixed(2));
     showFormSheet(
       context: context,
@@ -449,7 +432,7 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
               onPressed: () {
                 final newPrice = double.tryParse(ctrl.text);
                 if (newPrice != null) {
-                  ref.read(cartProvider.notifier).updateCustomPrice(productId, newPrice);
+                  ref.read(cartProvider.notifier).updateCustomPrice(cartKey, newPrice);
                 }
                 Navigator.pop(c);
               },
@@ -568,9 +551,9 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
                       final item = cartItems[index];
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(item.product['name'], maxLines: 1, overflow: TextOverflow.ellipsis),
+                        title: Text('${item.product['name']} ${item.batch != null ? '(Lote: ${DateTime.tryParse(item.batch!['created_at'] ?? '')?.toLocal().toString().split(' ')[0] ?? ''})' : ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
                         subtitle: GestureDetector(
-                          onTap: () => _showPriceEditor(context, item.product['id'], item.unitPrice),
+                          onTap: () => _showPriceEditor(context, item.cartKey, item.unitPrice),
                           child: Text(
                             '\$${item.unitPrice.toStringAsFixed(0)} c/u (Toca para editar)', 
                             style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)
@@ -581,12 +564,12 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
                           children: [
                             IconButton(
                               icon: const Icon(PhosphorIconsRegular.minusCircle),
-                              onPressed: () => cartNotifier.updateQuantity(item.product['id'], item.quantity - 1),
+                              onPressed: () => cartNotifier.updateQuantity(item.cartKey, item.quantity - 1),
                             ),
                             Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                             IconButton(
                               icon: const Icon(PhosphorIconsRegular.plusCircle),
-                              onPressed: () => cartNotifier.updateQuantity(item.product['id'], item.quantity + 1),
+                              onPressed: () => cartNotifier.updateQuantity(item.cartKey, item.quantity + 1),
                             ),
                           ],
                         ),

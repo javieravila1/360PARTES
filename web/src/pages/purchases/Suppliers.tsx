@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../../api/client';
+import { useBusinessStore } from '../../store/businessStore';
 import { Plus, Edit, Trash2, Truck } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -13,6 +14,7 @@ interface Supplier {
 }
 
 export default function Suppliers() {
+  const currentBusiness = useBusinessStore((state) => state.currentBusiness);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -38,8 +40,10 @@ export default function Suppliers() {
   };
 
   useEffect(() => {
-    fetchSuppliers();
-  }, []);
+    if (currentBusiness) {
+      fetchSuppliers();
+    }
+  }, [currentBusiness]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

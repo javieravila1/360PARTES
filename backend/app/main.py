@@ -62,6 +62,32 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
+from app.infrastructure.web.websocket_manager import manager
+from fastapi import WebSocket, WebSocketDisconnect
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+import asyncio
+
+class BroadcastMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"] and 200 <= response.status_code < 300:
+            business_id = request.headers.get("x-business-id", "all")
+            asyncio.create_task(manager.broadcast(business_id))
+        return response
+
+app.add_middleware(BroadcastMiddleware)
+
+@app.websocket("/api/v1/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to 360PARTES API"}
