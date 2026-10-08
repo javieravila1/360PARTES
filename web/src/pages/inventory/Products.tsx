@@ -3,6 +3,7 @@ import apiClient from '../../api/client';
 import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useBusinessStore } from '../../store/businessStore';
+import { ExcelActions } from '../../components/ExcelActions';
 
 interface Product {
   id: string;
@@ -164,16 +165,19 @@ export default function Products() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-white">Inventario de Productos</h1>
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setSelectedProductId('');
-            setFormData({ name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: '', extra_business_ids: [] });
-            setShowModal(true);
-          }}
-        >
-          <Plus size={20} className="mr-2" /> Nuevo Producto
-        </button>
+        <div className="flex gap-2">
+          <ExcelActions data={products} filename="Productos" />
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setSelectedProductId('');
+              setFormData({ name: '', sku: '', selling_price: 0, cost_price: 0, current_stock: 0, image: '', brand_id: '', category_id: '', extra_business_ids: [] });
+              setShowModal(true);
+            }}
+          >
+            <Plus size={20} className="mr-2" /> Nuevo Producto
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors">

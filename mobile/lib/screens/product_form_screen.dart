@@ -36,7 +36,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   String? _selectedBrandName;
 
   bool _trackInventory = true;
-  List<String> _extraBusinessIds = [];
+  final List<String> _extraBusinessIds = [];
 
   @override
   void initState() {

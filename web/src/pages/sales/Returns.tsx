@@ -3,6 +3,7 @@ import apiClient from '../../api/client';
 import { useBusinessStore } from '../../store/businessStore';
 import { Search, Undo2, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { ExcelActions } from '../../components/ExcelActions';
 
 export default function Returns() {
   const currentBusiness = useBusinessStore((state) => state.currentBusiness);
@@ -62,14 +63,17 @@ export default function Returns() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">Devoluciones</h1>
           <p className="text-slate-500 mt-2">Selecciona la venta y los repuestos a devolver al inventario</p>
         </div>
-        <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 p-3 rounded-xl border border-orange-200 dark:border-orange-800/50 flex items-center gap-3 shadow-sm">
-            <Undo2 size={24} />
-            <div className="text-sm font-medium">Reversa ventas y restaura stock</div>
+        <div className="flex gap-2 items-center">
+          <ExcelActions data={sales} filename="Devoluciones" />
+          <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 p-3 rounded-xl border border-orange-200 dark:border-orange-800/50 flex items-center gap-3 shadow-sm">
+              <Undo2 size={24} />
+              <div className="text-sm font-medium">Reversa ventas y restaura stock</div>
+          </div>
         </div>
       </div>
 

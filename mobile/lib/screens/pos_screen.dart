@@ -72,7 +72,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             final date = DateTime.tryParse(b['created_at'] ?? '')?.toLocal().toString().split(' ')[0] ?? '';
             return ListTile(
               title: Text('Venta Sugerida: \$${b['selling_price']}'),
-              subtitle: Text('Stock: ${b['current_stock']} | Costo: \$${b['cost_price']}'),
+              subtitle: Text('Ingreso: $date | Stock: ${b['current_stock']} | Costo: \$${b['cost_price']}'),
               trailing: const Icon(PhosphorIconsRegular.caretRight),
               onTap: () {
                 Navigator.pop(c);

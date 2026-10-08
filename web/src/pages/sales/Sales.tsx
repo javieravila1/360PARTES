@@ -4,6 +4,7 @@ import apiClient from '../../api/client';
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, User, Calendar, History, Receipt, Printer } from 'lucide-react';
 import { useBusinessStore } from '../../store/businessStore';
 import { toast } from 'react-toastify';
+import { ExcelActions } from '../../components/ExcelActions';
 
 interface ProductBatch {
   id: string;
@@ -477,33 +478,7 @@ export default function Sales() {
               </h2>
               <p className="text-slate-500 dark:text-slate-400 text-sm">Explora todas las transacciones recientes y los productos vendidos en cada una.</p>
             </div>
-            <button 
-              onClick={() => {
-                const headers = ['ID Venta', 'Fecha', 'Método Pago', 'Total Pagado', 'Productos (Cant x Nombre)'];
-                const rows = salesHistory.map(sale => {
-                  const date = sale.sale_date ? sale.sale_date : new Date(sale.created_at).toLocaleDateString();
-                  const products = sale.details?.map((d: any) => `${d.quantity}x ${d.product_name}`).join(' | ') || '';
-                  return [
-                    sale.invoice_number || sale.id.substring(0, 8),
-                    `"${date}"`,
-                    sale.payment_method,
-                    sale.total,
-                    `"${products}"`
-                  ].join(',');
-                });
-                const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows].join('\n');
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `ventas_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center"
-            >
-              Exportar a Excel
-            </button>
+            <ExcelActions data={salesHistory} filename="Historial_Ventas" />
           </div>
 
           {historyLoading ? (

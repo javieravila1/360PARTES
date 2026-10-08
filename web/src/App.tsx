@@ -17,6 +17,11 @@ import Returns from './pages/sales/Returns';
 import Layout from './components/Layout';
 import { useAuthStore } from './store/authStore';
 
+import Configuration from './pages/settings/Configuration';
+import Maintenance from './pages/Maintenance';
+
+import { useState, useEffect } from 'react';
+
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -25,6 +30,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const isMaintenanceMode = localStorage.getItem('maintenance_mode') === 'true';
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  useEffect(() => {
+    const handleDown = () => setIsServerDown(true);
+    window.addEventListener('backend_down', handleDown);
+    return () => window.removeEventListener('backend_down', handleDown);
+  }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isServerDown) {
+      // Intentar reconectar cada 5 segundos
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`http://${window.location.hostname}:8000/api/v1/health`);
+          if (res.ok) setIsServerDown(false);
+        } catch (e) {
+          // Aún desconectado
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isServerDown]);
+
+  if (isMaintenanceMode || isServerDown) {
+    return <Maintenance isServerDown={isServerDown} />;
+  }
+
   return (
     <BrowserRouter>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -55,6 +89,7 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="returns" element={<Returns />} />
           <Route path="suppliers" element={<Suppliers />} />
+          <Route path="config" element={<Configuration />} />
           
           <Route index element={<Navigate to="/dashboard" replace />} />
         </Route>

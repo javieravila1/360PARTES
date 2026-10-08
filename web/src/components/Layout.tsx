@@ -143,17 +143,17 @@ export default function Layout() {
         </nav>
         
         <div className="p-4">
-          <div className={`bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center border border-slate-100 dark:border-slate-700/50 hover:border-slate-200 dark:hover:border-slate-600 transition-colors cursor-pointer ${sidebarOpen ? 'p-3 gap-3' : 'justify-center p-3'}`}>
+          <Link to="/config" className={`bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center border border-slate-100 dark:border-slate-700/50 hover:border-slate-200 dark:hover:border-slate-600 transition-colors cursor-pointer ${sidebarOpen ? 'p-3 gap-3' : 'justify-center p-3'}`}>
             <div className="w-10 h-10 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg shadow-sm flex items-center justify-center flex-shrink-0">
               <Settings size={18} />
             </div>
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">Admin</p>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Acceso total</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">Configuración</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Sistema</p>
               </div>
             )}
-          </div>
+          </Link>
         </div>
       </aside>
 

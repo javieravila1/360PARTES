@@ -3,6 +3,7 @@ import apiClient from '../../api/client';
 import { useBusinessStore } from '../../store/businessStore';
 import { Plus, Edit, Trash2, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { ExcelActions } from '../../components/ExcelActions';
 
 interface Customer {
   id: string;
@@ -64,12 +65,15 @@ export default function Customers() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center">
           <Users className="mr-3 text-blue-600" /> Directorio de Clientes
         </h1>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="btn-primary"
-        >
-          <Plus size={20} className="mr-2" /> Nuevo Cliente
-        </button>
+        <div className="flex gap-2">
+          <ExcelActions data={customers} filename="Clientes" />
+          <button 
+            onClick={() => setShowModal(true)}
+            className="btn-primary"
+          >
+            <Plus size={20} className="mr-2" /> Nuevo Cliente
+          </button>
+        </div>
       </div>
 
       <div className="table-container">

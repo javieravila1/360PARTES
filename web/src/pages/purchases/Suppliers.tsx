@@ -3,6 +3,7 @@ import apiClient from '../../api/client';
 import { useBusinessStore } from '../../store/businessStore';
 import { Plus, Edit, Trash2, Truck } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { ExcelActions } from '../../components/ExcelActions';
 
 interface Supplier {
   id: string;
@@ -64,12 +65,15 @@ export default function Suppliers() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center">
           <Truck className="mr-3 text-indigo-600" /> Directorio de Proveedores
         </h1>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition"
-        >
-          <Plus size={20} className="mr-2" /> Nuevo Proveedor
-        </button>
+        <div className="flex gap-2">
+          <ExcelActions data={suppliers} filename="Proveedores" />
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition"
+          >
+            <Plus size={20} className="mr-2" /> Nuevo Proveedor
+          </button>
+        </div>
       </div>
 
       <div className="table-container">

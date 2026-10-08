@@ -3,8 +3,11 @@ import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
 import { PackagePlus, Receipt, AlertCircle, CheckCircle2, DollarSign, Calendar, List } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useBusinessStore } from '../../store/businessStore';
+import { ExcelActions } from '../../components/ExcelActions';
 
 export default function Purchases() {
+  const { currentBusiness } = useBusinessStore();
   const [activeTab, setActiveTab] = useState('GASTOS');
 
   // --- ESTADOS GASTOS ---
@@ -131,9 +134,12 @@ export default function Purchases() {
   return (
     <div className="flex flex-col h-full gap-6 font-sans text-slate-800 dark:text-slate-100">
 
-      <div className="flex gap-4">
-        <button onClick={() => setActiveTab('GASTOS')} className={`px-6 py-3 rounded-xl font-bold flex items-center transition-colors ${activeTab === 'GASTOS' ? 'bg-blue-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><Receipt className="mr-2" size={20} /> Gastos Generales</button>
-        <button onClick={() => setActiveTab('COMPRAS')} className={`px-6 py-3 rounded-xl font-bold flex items-center transition-colors ${activeTab === 'COMPRAS' ? 'bg-blue-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><PackagePlus className="mr-2" size={20} /> Gastos a Proveedores</button>
+      <div className="flex justify-between items-center">
+        <div className="flex gap-4">
+          <button onClick={() => setActiveTab('GASTOS')} className={`px-6 py-3 rounded-xl font-bold flex items-center transition-colors ${activeTab === 'GASTOS' ? 'bg-blue-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><Receipt className="mr-2" size={20} /> Gastos Generales</button>
+          <button onClick={() => setActiveTab('COMPRAS')} className={`px-6 py-3 rounded-xl font-bold flex items-center transition-colors ${activeTab === 'COMPRAS' ? 'bg-blue-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><PackagePlus className="mr-2" size={20} /> Gastos a Proveedores</button>
+        </div>
+        <ExcelActions data={activeTab === 'GASTOS' ? expenses : debts} filename={activeTab === 'GASTOS' ? 'Gastos' : 'Proveedores'} />
       </div>
 
       {activeTab === 'GASTOS' && (

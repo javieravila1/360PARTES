@@ -32,6 +32,8 @@ apiClient.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+    } else if (!error.response || error.code === 'ERR_NETWORK' || error.response.status === 502 || error.response.status === 503 || error.response.status === 504) {
+      window.dispatchEvent(new Event('backend_down'));
     }
     return Promise.reject(error);
   }

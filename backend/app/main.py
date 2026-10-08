@@ -92,7 +92,66 @@ async def websocket_endpoint(websocket: WebSocket):
 def read_root():
     return {"message": "Welcome to 360PARTES API"}
 
-@app.get("/health")
+@app.get("/api/v1/health")
 def health_check():
     return {"status": "ok"}
+
+import subprocess
+import datetime
+import urllib.parse
+import os
+from fastapi import BackgroundTasks
+from fastapi.responses import FileResponse
+
+@app.post("/api/v1/system/backup")
+def create_backup(background_tasks: BackgroundTasks):
+    try:
+        # postgresql+asyncpg://user:password@host:port/dbname
+        db_url_parsed = urllib.parse.urlparse(settings.DATABASE_URL)
+        user = db_url_parsed.username or "postgres"
+        password = db_url_parsed.password
+        host = db_url_parsed.hostname or "localhost"
+        port = db_url_parsed.port or 5432
+        dbname = db_url_parsed.path.lstrip('/')
+        
+        # Save to /tmp to avoid permission issues and clutter
+        filename = f"/tmp/{dbname}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.dump"
+        
+        env = os.environ.copy()
+        if password:
+            env["PGPASSWORD"] = password
+            
+        cmd = [
+            "pg_dump", 
+            "-U", user, 
+            "-h", host,
+            "-p", str(port),
+            "-Fc", 
+            "--create", 
+            dbname, 
+            "-f", filename
+        ]
+        
+        # Run synchronously to allow download
+        subprocess.run(cmd, env=env, check=True, capture_output=True)
+        
+        # Optionally schedule a background task to delete the file after some time, or let container restart handle it
+        def cleanup_file():
+            import time
+            time.sleep(300) # wait 5 minutes before deleting
+            try:
+                os.remove(filename)
+            except:
+                pass
+                
+        background_tasks.add_task(cleanup_file)
+        
+        return FileResponse(
+            path=filename,
+            media_type="application/octet-stream",
+            filename=os.path.basename(filename)
+        )
+    except Exception as e:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
 
