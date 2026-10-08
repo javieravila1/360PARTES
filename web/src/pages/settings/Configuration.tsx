@@ -7,6 +7,7 @@ export default function Configuration() {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '' });
+  const [emailData, setEmailData] = useState({ currentPassword: '', newEmail: '' });
   const [showPasswords, setShowPasswords] = useState(false);
 
   useEffect(() => {
@@ -88,6 +89,19 @@ export default function Configuration() {
     }
   };
 
+  const handleChangeEmail = async () => {
+    try {
+      await apiClient.put('/auth/change-email', {
+        current_password: emailData.currentPassword,
+        new_email: emailData.newEmail
+      });
+      toast.success('Correo actualizado correctamente');
+      setEmailData({ currentPassword: '', newEmail: '' });
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al cambiar correo');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
@@ -165,40 +179,67 @@ export default function Configuration() {
           </button>
         </div>
 
-        {/* Change Password Card */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+        {/* Change Security Card */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 md:col-span-2">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
               <Key size={24} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Seguridad</h2>
-              <p className="text-sm text-slate-500">Cambia la contraseña de tu cuenta</p>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Seguridad de la Cuenta</h2>
+              <p className="text-sm text-slate-500">Actualiza tu correo y contraseña</p>
             </div>
           </div>
           
-          <div className="space-y-4">
-            <div className="relative">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Contraseña Actual</label>
-              <input type={showPasswords ? "text" : "password"} value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
-              <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Change Email Section */}
+            <div className="space-y-4">
+              <h3 className="text-md font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700 pb-2">Cambiar Correo</h3>
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nuevo Correo</label>
+                <input type="email" value={emailData.newEmail} onChange={e => setEmailData({...emailData, newEmail: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none" />
+              </div>
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Contraseña Actual para confirmar</label>
+                <input type={showPasswords ? "text" : "password"} value={emailData.currentPassword} onChange={e => setEmailData({...emailData, currentPassword: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
+                <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <button
+                onClick={handleChangeEmail}
+                disabled={!emailData.currentPassword || !emailData.newEmail}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+              >
+                Actualizar Correo
               </button>
             </div>
-            <div className="relative">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nueva Contraseña</label>
-              <input type={showPasswords ? "text" : "password"} value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
-              <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+
+            {/* Change Password Section */}
+            <div className="space-y-4">
+              <h3 className="text-md font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700 pb-2">Cambiar Contraseña</h3>
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Contraseña Actual</label>
+                <input type={showPasswords ? "text" : "password"} value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
+                <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nueva Contraseña</label>
+                <input type={showPasswords ? "text" : "password"} value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
+                <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <button
+                onClick={handleChangePassword}
+                disabled={!passwords.current || !passwords.new}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+              >
+                Actualizar Contraseña
               </button>
             </div>
-            <button
-              onClick={handleChangePassword}
-              disabled={!passwords.current || !passwords.new}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
-            >
-              Actualizar Contraseña
-            </button>
           </div>
         </div>
 

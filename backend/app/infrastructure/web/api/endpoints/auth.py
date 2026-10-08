@@ -9,7 +9,7 @@ from app.core.security import verify_password, create_access_token, get_password
 from app.core.config import settings
 from app.infrastructure.database.models.user import User
 from app.application.dtos.user import UserCreate, UserResponse
-from app.application.dtos.auth import Token, PasswordChange
+from app.application.dtos.auth import Token, PasswordChange, EmailChange
 from app.infrastructure.web.api.deps import get_current_user
 
 router = APIRouter()
@@ -104,4 +104,30 @@ async def change_password(
     await db.commit()
     
     return {"message": "Contraseña actualizada exitosamente"}
+
+@router.put("/change-email")
+async def change_email(
+    data: EmailChange,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Contraseña actual incorrecta"
+        )
+    
+    stmt = select(User).where(User.email == data.new_email)
+    result = await db.execute(stmt)
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="El correo ingresado ya está en uso por otra cuenta"
+        )
+        
+    current_user.email = data.new_email
+    db.add(current_user)
+    await db.commit()
+    
+    return {"message": "Correo actualizado exitosamente"}
 
