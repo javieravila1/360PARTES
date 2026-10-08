@@ -68,7 +68,7 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
     List<dynamic> allBusinesses = [];
     List<String> selectedBusinesses = [];
     
-    if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands || widget.entityType == EntityType.suppliers)) {
+    if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands || widget.entityType == EntityType.suppliers || widget.entityType == EntityType.customers)) {
       try {
         final res = await apiClient.get('/businesses/');
         allBusinesses = res.data;
@@ -99,7 +99,7 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                   : 'Teléfono (Opcional)',
               controller: descCtrl,
             ),
-            if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands || widget.entityType == EntityType.suppliers)) ...[
+            if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands || widget.entityType == EntityType.suppliers || widget.entityType == EntityType.customers)) ...[
               const SizedBox(height: 16),
               const Text('Añadir a negocios', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 8),
@@ -169,8 +169,7 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                         final sep = _endpoint.endsWith('/') ? '' : '/';
                         await apiClient.put('$_endpoint$sep${itemToEdit['id']}', data: data);
                     } else {
-                        if (widget.entityType == EntityType.suppliers && selectedBusinesses.isNotEmpty) {
-                          // Filtrar el negocio actual porque ya se envía en el header x-business-id o token
+                        if ((widget.entityType == EntityType.suppliers || widget.entityType == EntityType.customers) && selectedBusinesses.isNotEmpty) {
                           data['additional_business_ids'] = selectedBusinesses.where((id) => id != ApiClient.memoryBusinessId).toList();
                         }
                         await apiClient.post(_endpoint, data: data);

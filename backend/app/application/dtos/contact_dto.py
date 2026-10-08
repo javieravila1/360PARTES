@@ -21,7 +21,7 @@ class CustomerBase(BaseModel):
         return v
 
 class CustomerCreate(CustomerBase):
-    pass
+    additional_business_ids: Optional[list[uuid.UUID]] = None
 
 class CustomerUpdate(CustomerBase):
     name: Optional[str] = None

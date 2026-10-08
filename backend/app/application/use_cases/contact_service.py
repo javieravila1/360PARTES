@@ -18,8 +18,14 @@ class ContactService:
         return result.scalars().all()
 
     async def create_customer(self, business_id: uuid.UUID, dto: CustomerCreate) -> Customer:
-        db_customer = Customer(**dto.model_dump(), business_id=business_id)
+        data = dto.model_dump(exclude={"additional_business_ids"})
+        db_customer = Customer(**data, business_id=business_id)
         self.db.add(db_customer)
+        if dto.additional_business_ids:
+            for extra_id in dto.additional_business_ids:
+                if extra_id != business_id:
+                    extra_customer = Customer(**data, business_id=extra_id)
+                    self.db.add(extra_customer)
         await self.db.commit()
         await self.db.refresh(db_customer)
         return db_customer
