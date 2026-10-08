@@ -61,6 +61,8 @@ export default function Brands() {
     }
   }, [currentBusiness]);
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -84,11 +86,11 @@ export default function Brands() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta marca?')) return;
     try {
       await apiClient.delete(`/brands/${id}`);
       toast.success('Marca eliminada');
       fetchBrands();
+      setDeleteConfirmId(null);
     } catch (error) {
       toast.error('Error al eliminar marca');
     }
@@ -150,7 +152,7 @@ export default function Brands() {
                     >
                       <Edit size={18} />
                     </button>
-                    <button onClick={() => handleDelete(brand.id)} className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
+                    <button onClick={() => setDeleteConfirmId(brand.id)} className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))
@@ -231,6 +233,32 @@ export default function Brands() {
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="floating-container p-8 w-full max-w-sm text-center">
+            <div className="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-5 border-4 border-white dark:border-slate-800 shadow-sm">
+              <Trash2 size={28} className="text-rose-600 dark:text-rose-400" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">¿Eliminar marca?</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">Esta acción es permanente y no se puede deshacer.</p>
+            <div className="flex gap-3 justify-center w-full">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-2.5 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-semibold hover:bg-rose-700 transition-all shadow-sm hover:shadow"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         </div>
       )}

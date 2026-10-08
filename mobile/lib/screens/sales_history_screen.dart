@@ -18,16 +18,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
 
   String _formatDate(dynamic dateVal) {
     if (dateVal == null) return 'Fecha desconocida';
-    final str = dateVal.toString();
-    if (str.length >= 10) {
-      final dateOnly = str.split('T')[0];
-      final parts = dateOnly.split('-');
-      if (parts.length == 3) {
-        return '${parts[2]}/${parts[1]}/${parts[0]}';
-      }
-    }
     try {
-      final d = DateTime.parse(str).toLocal();
+      final d = DateTime.parse(dateVal.toString()).toLocal();
       return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
     } catch (_) {
       return 'Fecha desconocida';
@@ -52,7 +44,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
           break;
         case 'yesterday':
           start = today.subtract(const Duration(days: 1));
-          end = DateTime(start!.year, start.month, start.day, 23, 59, 59);
+          end = DateTime(start.year, start.month, start.day, 23, 59, 59);
           break;
         case 'this_week':
           start = today.subtract(Duration(days: today.weekday - 1));
@@ -81,7 +73,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
       final dVal = sale['sale_date'] ?? sale['created_at'];
       if (dVal == null) return false;
       try {
-        final d = DateTime.parse(dVal.toString());
+        final d = DateTime.parse(dVal.toString()).toLocal();
         if (start != null && d.isBefore(start)) return false;
         if (end != null && d.isAfter(end)) return false;
         return true;
@@ -91,8 +83,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     }).toList();
 
     filtered.sort((a, b) {
-      final da = DateTime.tryParse((a['created_at'] ?? '').toString()) ?? DateTime(2000);
-      final db = DateTime.tryParse((b['created_at'] ?? '').toString()) ?? DateTime(2000);
+      final da = DateTime.tryParse((a['sale_date'] ?? a['created_at'] ?? '').toString())?.toLocal() ?? DateTime(2000);
+      final db = DateTime.tryParse((b['sale_date'] ?? b['created_at'] ?? '').toString())?.toLocal() ?? DateTime(2000);
       return db.compareTo(da);
     });
 

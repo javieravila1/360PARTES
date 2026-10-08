@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../api/api_client.dart';
+import 'businesses_provider.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });
 
 class AuthState {
@@ -23,7 +24,9 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(AuthState()) {
+  final Ref ref;
+
+  AuthNotifier(this.ref) : super(AuthState()) {
     _checkAuth();
   }
 
@@ -67,6 +70,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     ApiClient.memoryBusinessId = null;
     await ApiClient.storage.delete(key: 'auth_token');
     await ApiClient.storage.delete(key: 'business_id');
+
+    // Limpiar el estado global al cerrar sesión para evitar errores 422 al reconectar
+    ref.invalidate(currentBusinessProvider);
+    
     state = state.copyWith(isAuthenticated: false);
   }
 }

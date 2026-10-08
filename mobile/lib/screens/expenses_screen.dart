@@ -4,6 +4,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../providers/expenses_provider.dart';
 import '../providers/suppliers_provider.dart';
+import '../providers/businesses_provider.dart';
 import '../api/api_client.dart';
 import '../widgets/form_widgets.dart';
 
@@ -31,6 +32,20 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    final currentBusiness = ref.watch(currentBusinessProvider);
+
+    if (currentBusiness == null) {
+      final businessesAsync = ref.watch(businessesProvider);
+      return Scaffold(
+        appBar: AppBar(title: const Text('Compras y gastos')),
+        body: businessesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Center(child: Text('Esperando negocio... $e')),
+          data: (_) => const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Compras y gastos'),

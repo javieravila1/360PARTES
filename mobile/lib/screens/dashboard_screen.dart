@@ -16,23 +16,73 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dashboardAsync = ref.watch(dashboardProvider);
     final currentBusiness = ref.watch(currentBusinessProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Inicializar el negocio actual si no está seteado
     ref.listen(businessesProvider, (previous, next) {
-      if (next.hasValue && currentBusiness == null) {
+      if (next.hasValue && ref.read(currentBusinessProvider) == null) {
         ref.read(currentBusinessProvider.notifier).init(next.value!);
       }
     });
+
+    // Si no hay negocio seleccionado, mostrar cargando y forzar inicialización
+    if (currentBusiness == null) {
+      final businessesAsync = ref.watch(businessesProvider);
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: businessesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(PhosphorIconsRegular.warning, size: 48, color: Color(0xFFB45309)),
+                const SizedBox(height: 12),
+                Text('Error al cargar negocios', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(businessesProvider),
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          ),
+          data: (businesses) {
+            // Forzar inicialización si aún no se ha hecho
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (ref.read(currentBusinessProvider) == null && businesses.isNotEmpty) {
+                ref.read(currentBusinessProvider.notifier).init(businesses);
+              }
+            });
+            return const Center(child: CircularProgressIndicator());
+          },
+        ),
+      );
+    }
+
+    final dashboardAsync = ref.watch(dashboardProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: dashboardAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
-          child: Text('Error: $error'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(PhosphorIconsRegular.warning, size: 48, color: Color(0xFFB45309)),
+              const SizedBox(height: 12),
+              Text('Error al cargar el dashboard', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text('$error', style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12), textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(dashboardProvider),
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
         ),
         data: (metrics) {
           final lowStock = metrics['low_stock'] as List<dynamic>? ?? [];
@@ -150,7 +200,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '\$${(metrics['total_sales'] ?? 0).toStringAsFixed(0)}',
+                '\$${(metrics['total_sales'] as num? ?? 0).toStringAsFixed(0)}',
                 style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A), letterSpacing: -1.5),
               ),
               Padding(
@@ -165,7 +215,7 @@ class DashboardScreen extends ConsumerWidget {
                       children: [
                         Text('Ganancia neta', style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        Text('\$${(metrics['total_profit'] ?? 0).toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF059669), letterSpacing: -0.5)),
+                        Text('\$${(metrics['total_profit'] as num? ?? 0).toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF059669), letterSpacing: -0.5)),
                       ],
                     ),
                   ),
@@ -177,7 +227,7 @@ class DashboardScreen extends ConsumerWidget {
                       children: [
                         Text('Gastos', style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        Text('\$${(metrics['total_expenses'] ?? 0).toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFFB91C1C), letterSpacing: -0.5)),
+                        Text('\$${(metrics['total_expenses'] as num? ?? 0).toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFFB91C1C), letterSpacing: -0.5)),
                       ],
                     ),
                   ),
@@ -287,7 +337,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ...lowStock.map((item) {
-            final stock = item['stock'] as int;
+            final stock = ((item['stock'] as num?) ?? 0).toInt();
             final isOut = stock == 0;
             final accent = isOut ? const Color(0xFFB91C1C) : const Color(0xFFB45309);
             return Container(
@@ -439,7 +489,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildTimeFilterDropdown(WidgetRef ref) {
-    final currentFilter = ref.watch(dashboardTimeFilterProvider);
+    final currentFilter = ref.read(dashboardTimeFilterProvider);
     
     String getLabel(String val) {
       switch (val) {

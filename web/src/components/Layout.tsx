@@ -108,8 +108,8 @@ export default function Layout() {
       <aside className={`${sidebarOpen ? 'w-72' : 'w-24'} floating-container flex flex-col hidden md:flex h-full overflow-hidden transition-all duration-300`}>
         <div className={`h-20 flex items-center border-b border-slate-100 dark:border-slate-700/50 ${sidebarOpen ? 'px-8' : 'justify-center'}`}>
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 text-white p-2 rounded-xl shadow-md flex-shrink-0">
-              <Package size={22} strokeWidth={2.5} />
+            <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-blue-500 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md flex-shrink-0 tracking-tighter">
+              360
             </div>
             {sidebarOpen && (
               <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white transition-opacity duration-300 whitespace-nowrap">

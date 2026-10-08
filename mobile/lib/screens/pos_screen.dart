@@ -10,6 +10,7 @@ import '../providers/customers_provider.dart';
 import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
 import '../providers/sales_provider.dart';
+import '../providers/businesses_provider.dart';
 import '../api/api_client.dart';
 import '../widgets/form_widgets.dart';
 
@@ -122,6 +123,22 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentBusiness = ref.watch(currentBusinessProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (currentBusiness == null) {
+      final businessesAsync = ref.watch(businessesProvider);
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(title: const Text('Punto de Venta', style: TextStyle(fontWeight: FontWeight.bold))),
+        body: businessesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Center(child: Text('Esperando negocio... $e')),
+          data: (_) => const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     final inventoryAsync = ref.watch(inventoryProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final brandsAsync = ref.watch(brandsProvider);
@@ -129,7 +146,6 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final cartItems = ref.watch(cartProvider);
     final cartItemCount = ref.watch(cartProvider.notifier).itemCount;
     final cartTotal = ref.watch(cartProvider.notifier).total;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,

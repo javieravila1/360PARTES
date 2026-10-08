@@ -20,10 +20,8 @@ class CurrentBusinessNotifier extends StateNotifier<Map<String, dynamic>?> {
           (b) => b['business']['id'].toString() == savedId, 
           orElse: () => businesses.first
         );
-        state = found['business'];
         await setBusiness(found['business']['id'].toString(), found['business']);
       } else {
-        state = businesses.first['business'];
         await setBusiness(businesses.first['business']['id'].toString(), businesses.first['business']);
       }
     }

@@ -60,6 +60,10 @@ export default function Sales() {
   // History States
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('today');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
     if (currentBusiness) {
@@ -111,6 +115,63 @@ export default function Sales() {
       setHistoryLoading(false);
     }
   };
+
+  const getFilteredHistory = () => {
+    let filtered = [...salesHistory];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const getStart = (filter: string) => {
+      const d = new Date(today);
+      switch(filter) {
+        case 'today': return d;
+        case 'yesterday': d.setDate(d.getDate() - 1); return d;
+        case 'this_week': d.setDate(d.getDate() - d.getDay()); return d;
+        case 'last_15_days': d.setDate(d.getDate() - 15); return d;
+        case 'this_month': d.setDate(1); return d;
+        case 'this_quarter': d.setMonth(Math.floor(d.getMonth() / 3) * 3, 1); return d;
+        case 'this_semester': d.setMonth(d.getMonth() < 6 ? 0 : 6, 1); return d;
+        case 'this_year': d.setMonth(0, 1); return d;
+        default: return null;
+      }
+    };
+
+    if (historyDateFilter === 'custom') {
+      if (customStartDate) {
+        const start = new Date(customStartDate + 'T00:00:00');
+        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) >= start);
+      }
+      if (customEndDate) {
+        const end = new Date(customEndDate + 'T23:59:59');
+        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) <= end);
+      }
+    } else if (historyDateFilter !== 'all') {
+      const start = getStart(historyDateFilter);
+      if (start) {
+        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) >= start);
+      }
+      if (historyDateFilter === 'yesterday') {
+        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) < today);
+      }
+    }
+    
+    return filtered.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  };
+
+  const filteredHistory = getFilteredHistory();
+  const historyTotalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const historyCurrentItems = filteredHistory.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage);
+
+  const formatSaleDate = (dateString: string) => {
+    if (!dateString) return '';
+    const isDateOnly = dateString.length === 10;
+    if (isDateOnly) {
+      const [y, m, d] = dateString.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    return new Date(dateString).toLocaleDateString();
+  };
+
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
@@ -503,7 +564,49 @@ export default function Sales() {
               <p>No se encontraron ventas</p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+              
+              <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-wrap gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Filtrar por fecha</label>
+                  <select 
+                    value={historyDateFilter} 
+                    onChange={e => { setHistoryDateFilter(e.target.value); setHistoryPage(1); }}
+                    className="input-field py-2 text-sm"
+                  >
+                    <option value="today">Hoy</option>
+                    <option value="yesterday">Ayer</option>
+                    <option value="this_week">Esta semana</option>
+                    <option value="last_15_days">Últimos 15 días</option>
+                    <option value="this_month">Este mes</option>
+                    <option value="this_quarter">Este trimestre</option>
+                    <option value="this_semester">Este semestre</option>
+                    <option value="this_year">Este año</option>
+                    <option value="all">Todas las ventas</option>
+                    <option value="custom">Rango personalizado...</option>
+                  </select>
+                </div>
+                {historyDateFilter === 'custom' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Desde</label>
+                      <input type="date" value={customStartDate} onChange={e => { setCustomStartDate(e.target.value); setHistoryPage(1); }} className="input-field py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Hasta</label>
+                      <input type="date" value={customEndDate} onChange={e => { setCustomEndDate(e.target.value); setHistoryPage(1); }} className="input-field py-2 text-sm" />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {filteredHistory.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+                  <Receipt size={48} className="mb-4 opacity-20" />
+                  <p>No se encontraron ventas para este filtro</p>
+                </div>
+              ) : (
+                <>
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
                   <tr>
@@ -516,11 +619,11 @@ export default function Sales() {
                   </tr>
                 </thead>
                 <tbody>
-                  {salesHistory.map((sale: any) => (
+                  {historyCurrentItems.map((sale: any) => (
                     <tr key={sale.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{sale.invoice_number || sale.id.substring(0, 8)}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
-                        {new Date(sale.sale_date || sale.created_at).toLocaleDateString()}
+                        {formatSaleDate(sale.sale_date || sale.created_at)}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-bold">{sale.payment_method}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">
@@ -542,29 +645,30 @@ export default function Sales() {
                   ))}
                 </tbody>
               </table>
-
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 rounded-b-xl">
-          <span className="text-sm text-slate-600 font-medium">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, products.length)} de {products.length}</span>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
-
+              
+              {historyTotalPages > 1 && (
+                <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 rounded-b-xl">
+                  <span className="text-sm text-slate-600 font-medium">Mostrando {(historyPage - 1) * itemsPerPage + 1} a {Math.min(historyPage * itemsPerPage, filteredHistory.length)} de {filteredHistory.length}</span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
+                      disabled={historyPage === 1}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => setHistoryPage(prev => Math.min(prev + 1, historyTotalPages))}
+                      disabled={historyPage === historyTotalPages}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+              </>
+              )}
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
+import '../providers/businesses_provider.dart';
 import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import 'product_form_screen.dart';
@@ -145,7 +146,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             Container(
               constraints: const BoxConstraints(maxHeight: 150),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListView(
@@ -293,8 +294,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final inventoryAsync = ref.watch(inventoryProvider);
+    final currentBusiness = ref.watch(currentBusinessProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (currentBusiness == null) {
+      final businessesAsync = ref.watch(businessesProvider);
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(title: const Text('Inventario')),
+        body: businessesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Center(child: Text('Esperando negocio... $e')),
+          data: (_) => const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final inventoryAsync = ref.watch(inventoryProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
