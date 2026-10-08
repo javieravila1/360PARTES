@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:intl/intl.dart';
 
 import '../providers/sales_provider.dart';
 
@@ -204,7 +203,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               width: double.infinity,
               color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
               child: Text(
-                'Filtrando desde ${DateFormat('dd/MM/yyyy').format(_customStart!)} hasta ${DateFormat('dd/MM/yyyy').format(_customEnd!)}',
+                'Filtrando desde ${_customStart!.day.toString().padLeft(2,'0')}/${_customStart!.month.toString().padLeft(2,'0')}/${_customStart!.year} hasta ${_customEnd!.day.toString().padLeft(2,'0')}/${_customEnd!.month.toString().padLeft(2,'0')}/${_customEnd!.year}',
                 style: const TextStyle(fontSize: 12, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
