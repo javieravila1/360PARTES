@@ -36,14 +36,7 @@ export default function Sales() {
 
   // POS States
   const [products, setProducts] = useState<Product[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(products.length / itemsPerPage);
-
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
@@ -136,26 +129,32 @@ export default function Sales() {
       }
     };
 
+    const parseLocal = (dateStr: string) => {
+      if (!dateStr) return new Date();
+      if (dateStr.length === 10) return new Date(dateStr + 'T00:00:00');
+      return new Date(dateStr);
+    };
+
     if (historyDateFilter === 'custom') {
       if (customStartDate) {
         const start = new Date(customStartDate + 'T00:00:00');
-        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) >= start);
+        filtered = filtered.filter(s => parseLocal(s.sale_date || s.created_at) >= start);
       }
       if (customEndDate) {
         const end = new Date(customEndDate + 'T23:59:59');
-        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) <= end);
+        filtered = filtered.filter(s => parseLocal(s.sale_date || s.created_at) <= end);
       }
     } else if (historyDateFilter !== 'all') {
       const start = getStart(historyDateFilter);
       if (start) {
-        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) >= start);
+        filtered = filtered.filter(s => parseLocal(s.sale_date || s.created_at) >= start);
       }
       if (historyDateFilter === 'yesterday') {
-        filtered = filtered.filter(s => new Date(s.sale_date || s.created_at) < today);
+        filtered = filtered.filter(s => parseLocal(s.sale_date || s.created_at) < today);
       }
     }
     
-    return filtered.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return filtered.sort((a,b) => parseLocal(b.created_at).getTime() - parseLocal(a.created_at).getTime());
   };
 
   const filteredHistory = getFilteredHistory();
@@ -337,7 +336,7 @@ export default function Sales() {
     };
 
     try {
-      const { data: newSale } = await apiClient.post('/sales/', saleData);
+      await apiClient.post('/sales/', saleData);
       toast.success('Venta registrada con éxito');
       setCart([]);
       setSelectedCustomerId('');
