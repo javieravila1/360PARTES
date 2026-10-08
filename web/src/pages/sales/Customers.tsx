@@ -52,7 +52,7 @@ export default function Customers() {
   const fetchBusinesses = async () => {
     try {
       const { data } = await apiClient.get('/businesses/');
-      setAllBusinesses(data.map((b: any) => ({ id: b.id, name: b.name })));
+      setAllBusinesses(data.map((b: any) => ({ id: b.business.id, name: b.business.name })));
     } catch (_) {}
   };
 
