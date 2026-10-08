@@ -3,6 +3,8 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import Login from './pages/auth/Login';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import BusinessSelect from './pages/businesses/BusinessSelect';
 import BusinessCreate from './pages/businesses/BusinessCreate';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -64,6 +66,8 @@ function App() {
       <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* Protected Routes without Layout */}
         <Route path="/businesses" element={

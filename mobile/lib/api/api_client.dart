@@ -1,7 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart'; // Para kIsWeb
-import 'dart:io' show Platform;
 
 class ApiClient {
   static const storage = FlutterSecureStorage();
@@ -9,13 +7,8 @@ class ApiClient {
   static String? memoryAuthToken;
   
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000/api/v1'; // Para Flutter Web
-    } else if (Platform.isAndroid) {
-      return 'http://98.82.141.34:8000/api/v1'; // Para Android Emulator
-    } else {
-      return 'http://98.82.141.34:8000/api/v1'; // Para iOS Simulator u otros
-    }
+    // Apuntamos todas las plataformas (Web, Android, iOS) al servidor en producción
+    return 'https://360partes.cloud/api/v1';
   }
 
   final Dio dio;

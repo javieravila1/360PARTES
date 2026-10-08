@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from 'react-toastify';
@@ -18,7 +18,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const setToken = useAuthStore((state) => state.setToken);
+  const loginSuccess = useAuthStore((state) => state.loginSuccess);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema)
@@ -30,12 +30,12 @@ export default function Login() {
       formData.append('username', data.email.trim());
       formData.append('password', data.password.trim());
 
-      const response = await apiClient.post('/auth/login', formData, {
+      await apiClient.post('/auth/login', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
-      setToken(response.data.access_token);
+      loginSuccess(); // Ya no guardamos el token, solo actualizamos el estado
       toast.success('Sesión iniciada correctamente');
       navigate('/businesses');
     } catch (error: any) {
@@ -111,9 +111,9 @@ export default function Login() {
               </div>
 
               <div className="flex justify-end">
-                <a href="#" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">
+                <Link to="/forgot-password" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">
                   ¿Olvidaste tu contraseña?
-                </a>
+                </Link>
               </div>
 
               <button

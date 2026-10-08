@@ -4,17 +4,14 @@ import { useBusinessStore } from '../store/businessStore';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000/api/v1`,
+  withCredentials: true, // <-- Esto permite que el navegador envíe la cookie HttpOnly
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
+  // Ya no enviamos el token manualmente, el navegador envía la cookie automáticamente
   const currentBusiness = useBusinessStore.getState().currentBusiness;
   if (currentBusiness) {
     config.headers['X-Business-ID'] = currentBusiness.id;

@@ -44,6 +44,7 @@ export default function Products() {
   const [stockHistory, setStockHistory] = useState<any[]>([]);
 
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [stockToAdd, setStockToAdd] = useState(0);
   const [costPriceToAdd, setCostPriceToAdd] = useState(0);
   const [sellingPriceToAdd, setSellingPriceToAdd] = useState(0);
@@ -113,10 +114,10 @@ export default function Products() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
     try {
       await apiClient.delete(`/products/${id}`);
       toast.success('Producto eliminado');
+      setDeleteConfirmId(null);
       fetchData();
     } catch (error) {
       toast.error('Error al eliminar producto');
@@ -141,11 +142,18 @@ export default function Products() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.brand_id) {
+      return toast.warning('Por favor selecciona una marca');
+    }
+    if (!formData.category_id) {
+      return toast.warning('Por favor selecciona una categoría');
+    }
+
     try {
       const payload = {
         ...formData,
-        brand_id: formData.brand_id || null,
-        category_id: formData.category_id || null,
+        brand_id: formData.brand_id,
+        category_id: formData.category_id,
       };
       if (selectedProductId) {
         await apiClient.put(`/products/${selectedProductId}`, payload);
@@ -198,7 +206,7 @@ export default function Products() {
             ) : products.length === 0 ? (
               <tr><td colSpan={6} className="px-6 py-4 text-center text-slate-500">No hay productos registrados</td></tr>
             ) : (
-              products.map(p => (
+              currentItems.map(p => (
                 <tr key={p.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                   <td className="px-6 py-4">
                     {p.image_url ? (
@@ -234,7 +242,7 @@ export default function Products() {
                       + Stock
                     </button>
                     <button onClick={() => handleEdit(p)} className="text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
-                    <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
+                    <button onClick={() => setDeleteConfirmId(p.id)} className="text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))
@@ -303,15 +311,15 @@ export default function Products() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Marca (Opcional)</label>
-                      <select value={formData.brand_id} onChange={e => setFormData({ ...formData, brand_id: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Marca</label>
+                      <select required value={formData.brand_id} onChange={e => setFormData({ ...formData, brand_id: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none">
                         <option value="">Ninguna</option>
                         {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Categoría (Opcional)</label>
-                      <select value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Categoría</label>
+                      <select required value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none">
                         <option value="">Ninguna</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
@@ -478,6 +486,20 @@ export default function Products() {
             </div>
             <div className="flex justify-end mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button type="button" onClick={() => setShowHistoryModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg font-bold">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl max-w-sm w-full text-center border border-slate-100 dark:border-slate-700">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">¿Eliminar producto?</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-medium transition-colors">Cancelar</button>
+              <button onClick={() => handleDelete(deleteConfirmId)} className="px-4 py-2 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition-colors">Eliminar</button>
             </div>
           </div>
         </div>

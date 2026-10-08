@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../api/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/form_widgets.dart';
@@ -80,39 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showForgotPassword() {
-    final c = FormColors.of(context);
-    showFormSheet(
-      context: context,
-      title: 'Recuperar acceso',
-      subtitle: 'Las cuentas son gestionadas por el administrador de cada negocio.',
-      builder: (ctx, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: c.subtle,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(PhosphorIconsRegular.info, size: 20, color: c.label),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Solicita al administrador de tu negocio que restablezca tu contraseña desde el panel web de 360PARTES.',
-                    style: TextStyle(fontSize: 13.5, height: 1.45, color: c.label),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          AppButton(label: 'Entendido', onPressed: () => Navigator.pop(ctx)),
-        ],
-      ),
-    );
+    context.push('/forgot-password');
   }
 
   @override
