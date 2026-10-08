@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "360PARTES"
     DATABASE_URL: str
     JWT_SECRET: str
-    JWT_ACCESS_EXPIRE: int = 30
-    JWT_REFRESH_EXPIRE: int = 1440
+    JWT_ACCESS_EXPIRE: int = 43200
+    JWT_REFRESH_EXPIRE: int = 43200
     CORS_ORIGINS: str = "*"
     
     # MinIO

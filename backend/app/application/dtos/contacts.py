@@ -1,5 +1,5 @@
-﻿from typing import Optional
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, field_validator
 import uuid
 from datetime import datetime
 
@@ -14,6 +14,13 @@ class CustomerBase(BaseModel):
     city: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool = True
+
+    @field_validator('name', 'notes', 'city', 'address', 'document_id', mode='before')
+    @classmethod
+    def to_upper(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 class CustomerCreate(CustomerBase):
     pass
@@ -41,6 +48,13 @@ class SupplierBase(BaseModel):
     city: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool = True
+
+    @field_validator('company_name', 'contact_person', 'notes', 'city', 'address', 'document_id', mode='before')
+    @classmethod
+    def to_upper(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 class SupplierCreate(SupplierBase):
     pass

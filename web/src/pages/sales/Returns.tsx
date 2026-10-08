@@ -19,7 +19,7 @@ export default function Returns() {
     try {
       const { data } = await apiClient.get('/sales/');
       // Sort to show recent first
-      setSales(data.sort((a: any, b: any) => new Date(b.created_at || b.sale_date).getTime() - new Date(a.created_at || a.sale_date).getTime()));
+      setSales(data.sort((a: any, b: any) => new Date(b.sale_date || b.created_at).getTime() - new Date(a.sale_date || a.created_at).getTime()));
     } catch (e) {
       toast.error('Error al cargar ventas');
     } finally {
@@ -107,7 +107,7 @@ export default function Returns() {
                       Venta #{sale.invoice_number || sale.id.substring(0, 8).toUpperCase()}
                     </div>
                     <div className="text-sm text-slate-500 mt-1">
-                      {new Date(sale.created_at || sale.sale_date).toLocaleString()} • <span className={`font-semibold ${sale.payment_status === 'REFUNDED' ? 'text-red-500' : 'text-indigo-500'}`}>{sale.payment_status === 'REFUNDED' ? 'REEMBOLSADA' : sale.payment_method}</span>
+                      {new Date(sale.sale_date || sale.created_at).toLocaleString()} • <span className={`font-semibold ${sale.payment_status === 'REFUNDED' ? 'text-red-500' : 'text-indigo-500'}`}>{sale.payment_status === 'REFUNDED' ? 'REEMBOLSADA' : sale.payment_method}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">

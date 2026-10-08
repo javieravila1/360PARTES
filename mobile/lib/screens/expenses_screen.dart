@@ -96,8 +96,12 @@ class _GeneralExpensesViewState extends ConsumerState<_GeneralExpensesView> {
   @override
   Widget build(BuildContext context) {
     final expensesAsync = ref.watch(expensesProvider);
-    return CustomScrollView(
-      slivers: [
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(expensesProvider);
+      },
+      child: CustomScrollView(
+        slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -194,6 +198,7 @@ class _GeneralExpensesViewState extends ConsumerState<_GeneralExpensesView> {
           },
         ),
       ],
+    ),
     );
   }
 }
@@ -335,8 +340,12 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
     final suppliersAsync = ref.watch(suppliersProvider);
     final payablesAsync = ref.watch(payablesProvider);
 
-    return CustomScrollView(
-      slivers: [
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(payablesProvider);
+      },
+      child: CustomScrollView(
+        slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -544,6 +553,7 @@ class _SupplierExpensesViewState extends ConsumerState<_SupplierExpensesView> {
           },
         ),
       ],
+    ),
     );
   }
 }

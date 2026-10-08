@@ -20,7 +20,7 @@ class DashboardScreen extends ConsumerWidget {
     final currentBusiness = ref.watch(currentBusinessProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Inicializar el negocio actual si no estÃ¡ seteado
+    // Inicializar el negocio actual si no está seteado
     ref.listen(businessesProvider, (previous, next) {
       if (next.hasValue && currentBusiness == null) {
         ref.read(currentBusinessProvider.notifier).init(next.value!);
@@ -128,7 +128,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        // Tarjeta de mÃ©tricas
+        // Tarjeta de métricas
         Container(
           margin: const EdgeInsets.only(top: 148, left: 16, right: 16),
           padding: const EdgeInsets.all(22),
@@ -205,11 +205,11 @@ class DashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Accesos rÃ¡pidos'),
+          _sectionTitle('Accesos rápidos'),
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _actionCard('EstadÃ­sticas', PhosphorIconsRegular.chartPieSlice, isDark, onTap: () {
+              Expanded(child: _actionCard('Estadísticas', PhosphorIconsRegular.chartPieSlice, isDark, onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
               })),
               const SizedBox(width: 12),
@@ -267,7 +267,7 @@ class DashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('PrÃ³ximos a agotarse'),
+          _sectionTitle('Próximos a agotarse'),
           const SizedBox(height: 14),
           if (lowStock.isEmpty)
             Container(
@@ -282,7 +282,7 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   const Icon(PhosphorIconsRegular.checkCircle, color: Color(0xFF059669)),
                   const SizedBox(width: 12),
-                  Text('Todo el stock estÃ¡ en orden.', style: TextStyle(color: muted, fontWeight: FontWeight.w500)),
+                  Text('Todo el stock está en orden.', style: TextStyle(color: muted, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -375,7 +375,7 @@ class DashboardScreen extends ConsumerWidget {
                           onTap: () async {
                             Navigator.pop(context);
                             await ref.read(currentBusinessProvider.notifier).setBusiness(b['id'].toString(), b);
-                            ref.invalidate(dashboardProvider); // Refresca mÃ©tricas
+                            ref.invalidate(dashboardProvider); // Refresca métricas
                             ref.invalidate(inventoryProvider); // Refresca inventario
                           },
                         );
@@ -447,7 +447,7 @@ class DashboardScreen extends ConsumerWidget {
         case 'this_week': return 'Semana';
         case 'this_month': return 'Mes';
         case 'this_semester': return 'Semestre';
-        case 'this_year': return 'AÃ±o';
+        case 'this_year': return 'Año';
         case 'all_time': return 'Todo';
         default: return 'Hoy';
       }
@@ -475,7 +475,7 @@ class DashboardScreen extends ConsumerWidget {
         PopupMenuItem(value: 'this_week', child: Text('Esta Semana')),
         PopupMenuItem(value: 'this_month', child: Text('Este Mes')),
         PopupMenuItem(value: 'this_semester', child: Text('Este Semestre')),
-        PopupMenuItem(value: 'this_year', child: Text('Este AÃ±o')),
+        PopupMenuItem(value: 'this_year', child: Text('Este Año')),
         PopupMenuItem(value: 'all_time', child: Text('Todo el Tiempo')),
       ],
     );

@@ -18,7 +18,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const loginSuccess = useAuthStore((state) => state.loginSuccess);
+  const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema)
@@ -35,7 +35,7 @@ export default function Login() {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
-      loginSuccess(); // Ya no guardamos el token, solo actualizamos el estado
+      setAuthenticated(true);
       toast.success('Sesión iniciada correctamente');
       navigate('/businesses');
     } catch (error: any) {

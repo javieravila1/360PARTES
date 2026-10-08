@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -13,8 +13,18 @@ class CustomerBase(BaseModel):
     address: Optional[str] = None
     is_active: bool = True
 
+    @field_validator('name', 'document_type', 'document_id', 'address', mode='before')
+    @classmethod
+    def to_upper(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
+
 class CustomerCreate(CustomerBase):
     pass
+
+class CustomerUpdate(CustomerBase):
+    name: Optional[str] = None
 
 class CustomerResponse(CustomerBase):
     id: uuid.UUID
@@ -32,8 +42,18 @@ class SupplierBase(BaseModel):
     email: Optional[str] = None
     is_active: bool = True
 
+    @field_validator('company_name', 'contact_person', 'document_id', mode='before')
+    @classmethod
+    def to_upper(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
+
 class SupplierCreate(SupplierBase):
     pass
+
+class SupplierUpdate(SupplierBase):
+    company_name: Optional[str] = None
 
 class SupplierResponse(SupplierBase):
     id: uuid.UUID

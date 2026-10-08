@@ -291,22 +291,22 @@ export default function Products() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Código / SKU</label>
-                      <input required value={formData.sku} onChange={e => setFormData({ ...formData, sku: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Código / SKU (Opcional)</label>
+                      <input value={formData.sku} onChange={e => setFormData({ ...formData, sku: e.target.value })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Stock Inicial</label>
-                      <input type="number" min="1" max="10000000" value={formData.current_stock} onChange={e => setFormData({ ...formData, current_stock: Number(e.target.value) })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
+                      <input type="text" inputMode="numeric" value={formData.current_stock === 0 ? '' : formData.current_stock} onChange={e => { const val = e.target.value.replace(/\D/g, ''); let num = Number(val); if (num > 100000) num = 100000; setFormData({ ...formData, current_stock: num }); }} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Costo ($)</label>
-                      <input type="text" inputMode="decimal" value={formData.cost_price || ''} onChange={e => setFormData({ ...formData, cost_price: Number(e.target.value.replace(/[^0-9.]/g, '')) })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
+                      <input type="text" inputMode="numeric" value={!formData.cost_price ? '' : formData.cost_price.toLocaleString('es-CO')} onChange={e => { const val = e.target.value.replace(/\D/g, ''); let num = Number(val); if (num > 1000000000) num = 1000000000; setFormData({ ...formData, cost_price: num }); }} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Precio Sugerido de venta ($)</label>
-                      <input type="text" inputMode="decimal" required value={formData.selling_price || ''} onChange={e => setFormData({ ...formData, selling_price: Number(e.target.value.replace(/[^0-9.]/g, '')) })} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
+                      <input type="text" inputMode="numeric" required value={!formData.selling_price ? '' : formData.selling_price.toLocaleString('es-CO')} onChange={e => { const val = e.target.value.replace(/\D/g, ''); let num = Number(val); if (num > 1000000000) num = 1000000000; setFormData({ ...formData, selling_price: num }); }} className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -416,9 +416,9 @@ export default function Products() {
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Nuevo Costo ($)</label>
                 <input 
                   type="text" 
-                  inputMode="decimal"
-                  value={costPriceToAdd || ''} 
-                  onChange={e => setCostPriceToAdd(Number(e.target.value.replace(/[^0-9.]/g, '')))}
+                  inputMode="numeric"
+                  value={!costPriceToAdd ? '' : costPriceToAdd.toLocaleString('es-CO')} 
+                  onChange={e => { const val = e.target.value.replace(/\D/g, ''); let num = Number(val); if (num > 1000000000) num = 1000000000; setCostPriceToAdd(num); }}
                   className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" 
                 />
               </div>
@@ -426,9 +426,9 @@ export default function Products() {
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 dark:text-slate-300 mb-1.5">Nuevo P. Venta ($)</label>
                 <input 
                   type="text" 
-                  inputMode="decimal"
-                  value={sellingPriceToAdd || ''} 
-                  onChange={e => setSellingPriceToAdd(Number(e.target.value.replace(/[^0-9.]/g, '')))}
+                  inputMode="numeric"
+                  value={!sellingPriceToAdd ? '' : sellingPriceToAdd.toLocaleString('es-CO')} 
+                  onChange={e => { const val = e.target.value.replace(/\D/g, ''); let num = Number(val); if (num > 1000000000) num = 1000000000; setSellingPriceToAdd(num); }}
                   className="block w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm transition-all outline-none" 
                 />
               </div>

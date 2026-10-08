@@ -86,6 +86,31 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   void _addToCartDirectly(BuildContext context, WidgetRef ref, Map<String, dynamic> product, [Map<String, dynamic>? batch]) {
+    final availableStock = double.tryParse((batch != null ? batch['current_stock'] : product['current_stock'])?.toString() ?? '0') ?? 0.0;
+    final cartItems = ref.read(cartProvider);
+    final key = '${product['id']}-${batch?['id'] ?? ''}';
+    
+    // Manual firstOrNull implementation for dart < 3 or without collection package
+    CartItem? existingItem;
+    for (final item in cartItems) {
+      if (item.cartKey == key) {
+        existingItem = item;
+        break;
+      }
+    }
+    
+    final currentQty = existingItem?.quantity ?? 0;
+    
+    if (currentQty + 1 > availableStock) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('No hay suficiente stock disponible'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 2),
+      ));
+      return;
+    }
+
     final suggestedPrice = batch != null ? double.tryParse(batch['selling_price']?.toString() ?? '0') ?? 0.0 : double.tryParse(product['selling_price']?.toString() ?? '0') ?? 0.0;
     ref.read(cartProvider.notifier).addProductWithPrice(product, suggestedPrice, batch: batch);
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -225,12 +250,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(p['name'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                  Text(p['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
                                   const SizedBox(height: 4),
-                                  Row(
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
                                     children: [
                                       Text('Sug: \$${suggestedPrice.toStringAsFixed(2)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                      const SizedBox(width: 8),
                                       Text('Stock: $stock', style: TextStyle(color: stock == 0 ? const Color(0xFFB91C1C) : const Color(0xFF059669), fontSize: 12, fontWeight: FontWeight.w600)),
                                     ],
                                   ),
@@ -551,7 +577,7 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
                       final item = cartItems[index];
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text('${item.product['name']} ${item.batch != null ? '(Lote: ${DateTime.tryParse(item.batch!['created_at'] ?? '')?.toLocal().toString().split(' ')[0] ?? ''})' : ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                        title: Text('${item.product['name']} ${item.batch != null ? '(Lote: ${DateTime.tryParse(item.batch!['created_at'] ?? '')?.toLocal().toString().split(' ')[0] ?? ''})' : ''}'),
                         subtitle: GestureDetector(
                           onTap: () => _showPriceEditor(context, item.cartKey, item.unitPrice),
                           child: Text(
@@ -569,7 +595,19 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
                             Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                             IconButton(
                               icon: const Icon(PhosphorIconsRegular.plusCircle),
-                              onPressed: () => cartNotifier.updateQuantity(item.cartKey, item.quantity + 1),
+                              onPressed: () {
+                                final availableStock = double.tryParse((item.batch != null ? item.batch!['current_stock'] : item.product['current_stock'])?.toString() ?? '0') ?? 0.0;
+                                if (item.quantity + 1 > availableStock) {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                    content: Text('No hay suficiente stock disponible'),
+                                    backgroundColor: Colors.red,
+                                    duration: Duration(seconds: 2),
+                                  ));
+                                } else {
+                                  cartNotifier.updateQuantity(item.cartKey, item.quantity + 1);
+                                }
+                              },
                             ),
                           ],
                         ),

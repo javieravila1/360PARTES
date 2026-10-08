@@ -47,14 +47,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       ApiClient.memoryAuthToken = token;
       await ApiClient.storage.write(key: 'auth_token', value: token);
-      
-      // Obtener el negocio (business) del usuario
-      final businessRes = await apiClient.get('/businesses/');
-      if (businessRes.data != null && (businessRes.data as List).isNotEmpty) {
-        final firstBusinessId = businessRes.data[0]['business']['id'].toString();
-        ApiClient.memoryBusinessId = firstBusinessId;
-        await ApiClient.storage.write(key: 'business_id', value: firstBusinessId);
-      }
 
       state = state.copyWith(isLoading: false, isAuthenticated: true);
       return true;

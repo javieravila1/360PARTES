@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/categories_provider.dart';
 import '../providers/brands_provider.dart';
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import 'product_form_screen.dart';
 import '../widgets/form_widgets.dart';
@@ -103,10 +104,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  void _showQuickCreateDialog(String entityName, String endpoint, AutoDisposeFutureProvider providerToRefresh) {
+  void _showQuickCreateDialog(String entityName, String endpoint, AutoDisposeFutureProvider providerToRefresh) async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     bool isSaving = false;
+    
+    List<dynamic> allBusinesses = [];
+    List<String> selectedBusinesses = [];
+    
+    try {
+      final res = await apiClient.get('/businesses/');
+      allBusinesses = res.data;
+      if (ApiClient.memoryBusinessId != null) {
+        selectedBusinesses = [ApiClient.memoryBusinessId!];
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
 
     showFormSheet(
       context: context,
@@ -125,6 +139,38 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               label: 'Descripción (Opcional)',
               controller: descCtrl,
             ),
+            const SizedBox(height: 16),
+            const Text('Añadir a negocios', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 150),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: allBusinesses.map((b) {
+                  final id = b['business']['id'].toString();
+                  return CheckboxListTile(
+                    title: Text(b['business']['name'], style: const TextStyle(fontSize: 14)),
+                    value: selectedBusinesses.contains(id),
+                    dense: true,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) {
+                          selectedBusinesses.add(id);
+                        } else {
+                          selectedBusinesses.remove(id);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
             const SizedBox(height: 24),
             AppButton(
               label: 'Guardar',
@@ -133,10 +179,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 if (nameCtrl.text.trim().isEmpty) return;
                 setModalState(() => isSaving = true);
                 try {
-                  await apiClient.post(endpoint, data: {
+                  final data = {
                     "name": nameCtrl.text.trim(),
                     "description": descCtrl.text.trim()
-                  });
+                  };
+                  
+                  final bids = selectedBusinesses.isNotEmpty ? selectedBusinesses : [ApiClient.memoryBusinessId!];
+                  await Future.wait(
+                    bids.map((bid) => apiClient.post(
+                      endpoint, 
+                      data: data, 
+                      options: Options(headers: {'x-business-id': bid})
+                    ))
+                  );
+                  
                   ref.invalidate(providerToRefresh);
                   if (!c.mounted) return;
                   Navigator.pop(c);
@@ -310,7 +366,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
           // Lista de Productos
           Expanded(
-            child: inventoryAsync.when(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(inventoryProvider);
+              },
+              child: inventoryAsync.when(
               skipLoadingOnReload: true,
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
@@ -440,16 +500,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           ),
                           title: Text(
                             product['name'] ?? 'Sin nombre',
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              'SKU: ${product['sku'] ?? 'N/A'}',
-                              style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
                           ),
                           trailing: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -541,6 +592,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ),
                 );
               },
+            ),
             ),
           ),
         ],

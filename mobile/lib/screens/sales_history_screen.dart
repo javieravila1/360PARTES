@@ -29,7 +29,11 @@ class SalesHistoryScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: salesAsync.when(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(salesProvider);
+        },
+        child: salesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, s) => Center(child: Text('Error: $e')),
         data: (sales) {
@@ -55,8 +59,9 @@ class SalesHistoryScreen extends ConsumerWidget {
             separatorBuilder: (c, i) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final sale = sales[index];
-              final dateStr = sale['sale_date'] != null
-                  ? DateTime.parse(sale['sale_date'])
+              final dateVal = sale['sale_date'] ?? sale['created_at'];
+              final dateStr = dateVal != null
+                  ? DateTime.parse(dateVal)
                         .toLocal()
                         .toString()
                         .split('.')[0]
@@ -118,6 +123,7 @@ class SalesHistoryScreen extends ConsumerWidget {
             },
           );
         },
+      ),
       ),
     );
   }
