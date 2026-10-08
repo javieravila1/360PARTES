@@ -154,7 +154,7 @@ async def forgot_password(
     db.add(user)
     await db.commit()
     
-    await send_reset_pin_email(user.email, pin)
+    await send_reset_pin_email(user.email, pin, user.first_name)
     
     return {"message": "Si el correo está registrado, se ha enviado un PIN."}
 

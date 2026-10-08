@@ -4,7 +4,7 @@ import aiosmtplib
 from pathlib import Path
 from app.core.config import settings
 
-async def send_reset_pin_email(to_email: str, pin: str):
+async def send_reset_pin_email(to_email: str, pin: str, user_name: str = "Usuario"):
     # En producción deberías usar las credenciales desde tu .env o settings
     # Ej: settings.SMTP_USER, settings.SMTP_PASSWORD, etc.
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -26,7 +26,8 @@ async def send_reset_pin_email(to_email: str, pin: str):
     template_path = Path(__file__).parent.parent / "templates" / "reset_password_pin.html"
     try:
         html_content = template_path.read_text(encoding="utf-8")
-        html_content = html_content.replace("{{pin}}", pin)
+        html_content = html_content.replace("{{ reset_pin }}", pin)
+        html_content = html_content.replace("{{ user_name }}", user_name)
     except Exception as e:
         html_content = f"<h1>Recuperación de Contraseña</h1><p>Tu PIN es: <b>{pin}</b></p>"
 

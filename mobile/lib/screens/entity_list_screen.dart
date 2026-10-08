@@ -68,7 +68,7 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
     List<dynamic> allBusinesses = [];
     List<String> selectedBusinesses = [];
     
-    if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands)) {
+    if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands || widget.entityType == EntityType.suppliers)) {
       try {
         final res = await apiClient.get('/businesses/');
         allBusinesses = res.data;
@@ -99,14 +99,14 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                   : 'Teléfono (Opcional)',
               controller: descCtrl,
             ),
-            if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands)) ...[
+            if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands || widget.entityType == EntityType.suppliers)) ...[
               const SizedBox(height: 16),
               const Text('Añadir a negocios', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 8),
               Container(
                 constraints: const BoxConstraints(maxHeight: 150),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ListView(
@@ -169,6 +169,10 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                         final sep = _endpoint.endsWith('/') ? '' : '/';
                         await apiClient.put('$_endpoint$sep${itemToEdit['id']}', data: data);
                     } else {
+                        if (widget.entityType == EntityType.suppliers && selectedBusinesses.isNotEmpty) {
+                          // Filtrar el negocio actual porque ya se envía en el header x-business-id o token
+                          data['additional_business_ids'] = selectedBusinesses.where((id) => id != ApiClient.memoryBusinessId).toList();
+                        }
                         await apiClient.post(_endpoint, data: data);
                     }
                   }
