@@ -197,7 +197,7 @@ export default function Layout() {
                   <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700/50">
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cambiar negocio</div>
                   </div>
-                  <div className="py-2 px-2">
+                  <div className="py-2 px-2 max-h-72 overflow-y-auto">
                     {businesses.map(b => (
                       <button
                         key={b.id}
