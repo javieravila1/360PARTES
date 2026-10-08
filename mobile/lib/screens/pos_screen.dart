@@ -472,35 +472,34 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
 
   @override
   Widget build(BuildContext context) {
-    if (_success) {
-      return Container(
-        height: 300,
-        alignment: Alignment.center,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(PhosphorIconsFill.checkCircle, color: Colors.green, size: 100),
-              SizedBox(height: 16),
-              Text('¡Venta Exitosa!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green)),
-            ],
-          ),
-        ),
-      );
-    }
-
     final cartItems = ref.watch(cartProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
     final total = cartNotifier.total;
     final customersAsync = ref.watch(customersProvider);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      minChildSize: 0.5,
+      initialChildSize: _success ? 0.4 : 0.8,
+      minChildSize: 0.4,
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
+        if (_success) {
+          return Container(
+            height: 300,
+            alignment: Alignment.center,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(PhosphorIconsFill.checkCircle, color: Colors.green, size: 100),
+                  SizedBox(height: 16),
+                  Text('¡Venta Exitosa!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green)),
+                ],
+              ),
+            ),
+          );
+        }
         return Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
