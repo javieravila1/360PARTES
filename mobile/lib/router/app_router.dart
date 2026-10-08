@@ -7,12 +7,14 @@ import '../screens/forgot_password_screen.dart';
 import '../screens/reset_password_screen.dart';
 import '../screens/main_navigation_screen.dart';
 import '../screens/business_select_screen.dart';
+import '../providers/businesses_provider.dart';
 import '../screens/product_form_screen.dart';
 import '../screens/sales_history_screen.dart';
 import '../screens/expenses_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
+  final currentBusiness = ref.watch(currentBusinessProvider);
 
   return GoRouter(
     initialLocation: '/',
@@ -21,10 +23,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.matchedLocation == '/login';
       final isForgot = state.matchedLocation == '/forgot-password';
       final isReset = state.matchedLocation == '/reset-password';
+      final isBusinessSelect = state.matchedLocation == '/businesses';
       final isAuthRoute = isLoggingIn || isForgot || isReset;
 
       if (!isAuth && !isAuthRoute) return '/login';
       if (isAuth && isAuthRoute) return '/businesses';
+      if (isAuth && currentBusiness == null && !isBusinessSelect) return '/businesses';
 
       return null;
     },
