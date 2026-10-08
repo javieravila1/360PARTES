@@ -1,4 +1,4 @@
-﻿from fastapi import Depends, HTTPException, status, Header
+from fastapi import Depends, HTTPException, status, Header, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,9 +11,10 @@ from app.infrastructure.database.models.business_user import BusinessUser, Busin
 from app.application.dtos.auth import TokenPayload
 import uuid
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"/api/v1/auth/login", auto_error=False)
 
 async def get_current_user(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ) -> User:
@@ -22,8 +23,13 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    actual_token = request.cookies.get("access_token") or token
+    if not actual_token:
+        raise credentials_exception
+        
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        payload = jwt.decode(actual_token, settings.JWT_SECRET, algorithms=["HS256"])
         token_data = TokenPayload(**payload)
         if token_data.sub is None:
             raise credentials_exception

@@ -26,7 +26,23 @@ export default function Brands() {
   const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  
+  const [allBusinesses, setAllBusinesses] = useState<{id: string, name: string}[]>([]);
+  const [selectedBusinesses, setSelectedBusinesses] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      try {
+        const { data } = await apiClient.get('/businesses/');
+        setAllBusinesses(data.map((d: any) => d.business));
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchBusinesses();
+  }, []);
 
   const fetchBrands = async () => {
     try {
@@ -48,13 +64,33 @@ export default function Brands() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/brands/', formData);
-      toast.success('Marca creada');
+      if (editingId) {
+        await apiClient.put(`/brands/${editingId}`, { name: formData.name, description: formData.description });
+        toast.success('Marca actualizada exitosamente');
+      } else {
+        const bids = selectedBusinesses.length > 0 ? selectedBusinesses : [currentBusiness?.id];
+        await Promise.all(
+          bids.map(bid => apiClient.post('/brands/', formData, { headers: { 'x-business-id': bid } }))
+        );
+        toast.success('Marca creada exitosamente');
+      }
       setShowModal(false);
+      setEditingId(null);
       setFormData({ name: '', description: '' });
       fetchBrands();
     } catch (error) {
-      toast.error('Error al crear marca');
+      toast.error('Error al guardar marca');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar esta marca?')) return;
+    try {
+      await apiClient.delete(`/brands/${id}`);
+      toast.success('Marca eliminada');
+      fetchBrands();
+    } catch (error) {
+      toast.error('Error al eliminar marca');
     }
   };
 
@@ -67,6 +103,8 @@ export default function Brands() {
           <button 
             onClick={() => {
               setFormData({ name: '', description: '' });
+              setEditingId(null);
+              setSelectedBusinesses(currentBusiness ? [currentBusiness.id] : []);
               setShowModal(true);
             }}
             className="btn-primary"
@@ -102,8 +140,17 @@ export default function Brands() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-blue-600 hover:text-blue-800 mr-3"><Edit size={18} /></button>
-                    <button className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
+                    <button 
+                      onClick={() => {
+                        setFormData({ name: brand.name, description: brand.description || '' });
+                        setEditingId(brand.id);
+                        setShowModal(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 mr-3"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(brand.id)} className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))
@@ -139,7 +186,7 @@ export default function Brands() {
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="floating-container p-8 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nueva Marca</h2>
+            <h2 className="text-xl font-bold mb-4">{editingId ? 'Editar Marca' : 'Nueva Marca'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block label-field dark:text-slate-200">Nombre</label>
@@ -158,6 +205,27 @@ export default function Brands() {
                   className="mt-1 block w-full rounded-lg input-field" 
                 />
               </div>
+              {!editingId && (
+                <div className="mt-4">
+                  <label className="block label-field dark:text-slate-200 mb-2">Añadir a negocios</label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+                  {allBusinesses.map(b => (
+                    <label key={b.id} className="flex items-center space-x-2">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedBusinesses.includes(b.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedBusinesses([...selectedBusinesses, b.id]);
+                          else setSelectedBusinesses(selectedBusinesses.filter(id => id !== b.id));
+                        }}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-700"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{b.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              )}
               <div className="flex justify-end space-x-3 mt-6">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 rounded-lg">Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>

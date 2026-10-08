@@ -6,9 +6,11 @@ final dashboardTimeFilterProvider = StateProvider<String>((ref) => 'this_month')
 final dashboardChartTimeFilterProvider = StateProvider<String>((ref) => 'this_week');
 
 final dashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  ref.watch(currentBusinessProvider);
+  final currentBusiness = ref.watch(currentBusinessProvider);
+  if (currentBusiness == null) throw Exception('Waiting for business');
   final timeFilter = ref.watch(dashboardTimeFilterProvider);
   final chartTimeFilter = ref.watch(dashboardChartTimeFilterProvider);
   final response = await apiClient.get('/dashboard/?time_filter=$timeFilter&chart_time_filter=$chartTimeFilter');
   return response.data;
 });
+

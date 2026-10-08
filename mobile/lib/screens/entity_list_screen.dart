@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../widgets/form_widgets.dart';
+import '../providers/customers_provider.dart';
+import '../providers/suppliers_provider.dart';
+import '../providers/categories_provider.dart';
+import '../providers/brands_provider.dart';
 
 enum EntityType { customers, suppliers, categories, brands }
 
@@ -55,14 +60,29 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
     }
   }
 
-  void _showAddDialog() {
-    final nameCtrl = TextEditingController();
-    final descCtrl = TextEditingController(); // Usado para phone/desc
+  void _showAddDialog([Map<String, dynamic>? itemToEdit]) async {
+    final nameCtrl = TextEditingController(text: itemToEdit != null ? (itemToEdit['name'] ?? itemToEdit['company_name'] ?? '') : '');
+    final descCtrl = TextEditingController(text: itemToEdit != null ? (itemToEdit['description'] ?? itemToEdit['phone'] ?? '') : ''); // Usado para phone/desc
     bool isSaving = false;
+    
+    List<dynamic> allBusinesses = [];
+    List<String> selectedBusinesses = [];
+    
+    if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands)) {
+      try {
+        final res = await apiClient.get('/businesses/');
+        allBusinesses = res.data;
+        if (ApiClient.memoryBusinessId != null) {
+          selectedBusinesses = [ApiClient.memoryBusinessId!];
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
 
     showFormSheet(
       context: context,
-      title: 'Nuevo $_title',
+      title: itemToEdit != null ? 'Editar $_title' : 'Nuevo $_title',
       builder: (c, setModalState) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -79,6 +99,40 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                   : 'Teléfono (Opcional)',
               controller: descCtrl,
             ),
+            if (itemToEdit == null && (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands)) ...[
+              const SizedBox(height: 16),
+              const Text('Añadir a negocios', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 8),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 150),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: allBusinesses.map((b) {
+                    final id = b['business']['id'].toString();
+                    return CheckboxListTile(
+                      title: Text(b['business']['name'], style: const TextStyle(fontSize: 14)),
+                      value: selectedBusinesses.contains(id),
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (val) {
+                        setModalState(() {
+                          if (val == true) {
+                            selectedBusinesses.add(id);
+                          } else {
+                            selectedBusinesses.remove(id);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             AppButton(
               label: 'Guardar',
@@ -91,17 +145,44 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                   Map<String, dynamic> data = {};
                   if (widget.entityType == EntityType.categories || widget.entityType == EntityType.brands) {
                     data = {"name": nameCtrl.text.trim(), "description": descCtrl.text.trim()};
-                  } else if (widget.entityType == EntityType.customers) {
-                    data = {"name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
-                  } else if (widget.entityType == EntityType.suppliers) {
-                    data = {"company_name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
+                    
+                    if (itemToEdit != null) {
+                        final sep = _endpoint.endsWith('/') ? '' : '/';
+                        await apiClient.put('$_endpoint$sep${itemToEdit['id']}', data: data);
+                    } else {
+                        final bids = selectedBusinesses.isNotEmpty ? selectedBusinesses : [ApiClient.memoryBusinessId!];
+                        await Future.wait(
+                          bids.map((bid) => apiClient.post(
+                            _endpoint, 
+                            data: data, 
+                            options: Options(headers: {'x-business-id': bid})
+                          ))
+                        );
+                    }
+                  } else {
+                    if (widget.entityType == EntityType.customers) {
+                      data = {"name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
+                    } else if (widget.entityType == EntityType.suppliers) {
+                      data = {"company_name": nameCtrl.text.trim(), "phone": descCtrl.text.trim()};
+                    }
+                    if (itemToEdit != null) {
+                        final sep = _endpoint.endsWith('/') ? '' : '/';
+                        await apiClient.put('$_endpoint$sep${itemToEdit['id']}', data: data);
+                    } else {
+                        await apiClient.post(_endpoint, data: data);
+                    }
                   }
 
-                  await apiClient.post(_endpoint, data: data);
                   if (!c.mounted) return;
                   Navigator.pop(c);
                   if (!mounted) return;
                   _fetchItems();
+                  
+                  if (widget.entityType == EntityType.customers) ref.invalidate(customersProvider);
+                  if (widget.entityType == EntityType.suppliers) ref.invalidate(suppliersProvider);
+                  if (widget.entityType == EntityType.categories) ref.invalidate(categoriesProvider);
+                  if (widget.entityType == EntityType.brands) ref.invalidate(brandsProvider);
+                  
                 } catch (e) {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -114,6 +195,34 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
         );
       },
     );
+  }
+
+  void _deleteItem(Map<String, dynamic> item) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Confirmar Eliminación'),
+        content: const Text('¿Estás seguro de que deseas eliminar este registro?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+        ],
+      )
+    );
+    if (confirm != true) return;
+    
+    try {
+      final sep = _endpoint.endsWith('/') ? '' : '/';
+      await apiClient.delete('$_endpoint$sep${item['id']}');
+      _fetchItems();
+      
+      if (widget.entityType == EntityType.customers) ref.invalidate(customersProvider);
+      if (widget.entityType == EntityType.suppliers) ref.invalidate(suppliersProvider);
+      if (widget.entityType == EntityType.categories) ref.invalidate(categoriesProvider);
+      if (widget.entityType == EntityType.brands) ref.invalidate(brandsProvider);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al eliminar: $e')));
+    }
   }
 
   String _searchQuery = '';
@@ -220,10 +329,20 @@ class _EntityListScreenState extends ConsumerState<EntityListScreen> {
                                     child: Text(sub, style: TextStyle(color: muted, fontSize: 13)),
                                   )
                                 : null,
-                            trailing: Icon(PhosphorIconsRegular.caretRight, size: 18, color: muted),
-                            onTap: () {
-                              // En el futuro se podría ir a detalle o editar
-                            },
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(PhosphorIconsRegular.pencil, size: 20, color: Colors.blue.shade400),
+                                  onPressed: () => _showAddDialog(item),
+                                ),
+                                IconButton(
+                                  icon: Icon(PhosphorIconsRegular.trash, size: 20, color: Colors.red.shade400),
+                                  onPressed: () => _deleteItem(item),
+                                ),
+                              ],
+                            ),
+                            onTap: () => _showAddDialog(item),
                           ),
                       );
                     },

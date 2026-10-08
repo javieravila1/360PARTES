@@ -29,7 +29,7 @@ class ApiClient {
         }
         
         final businessId = memoryBusinessId ?? await storage.read(key: 'business_id');
-        if (businessId != null) {
+        if (businessId != null && !options.headers.containsKey('x-business-id') && !options.headers.containsKey('X-Business-ID')) {
           options.headers['X-Business-ID'] = businessId;
         }
         

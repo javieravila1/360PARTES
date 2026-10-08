@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/main_navigation_screen.dart';
+import '../screens/business_select_screen.dart';
 import '../screens/product_form_screen.dart';
 import '../screens/sales_history_screen.dart';
 import '../screens/expenses_screen.dart';
@@ -18,7 +19,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.matchedLocation == '/login';
 
       if (!isAuth && !isLoggingIn) return '/login';
-      if (isAuth && isLoggingIn) return '/';
+      if (isAuth && isLoggingIn) return '/businesses';
 
       return null;
     },
@@ -30,6 +31,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) => const MainNavigationScreen(),
+      ),
+      GoRoute(
+        path: '/businesses',
+        builder: (context, state) => const BusinessSelectScreen(),
       ),
       GoRoute(
         path: '/product-form',

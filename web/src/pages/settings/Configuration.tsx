@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
 import { toast } from 'react-toastify';
-import { Database, Server, Settings2, Activity, HardDriveDownload } from 'lucide-react';
+import { Database, Server, Settings2, Activity, HardDriveDownload, Key, Eye, EyeOff } from 'lucide-react';
 
 export default function Configuration() {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [passwords, setPasswords] = useState({ current: '', new: '' });
+  const [showPasswords, setShowPasswords] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -70,6 +72,19 @@ export default function Configuration() {
       setTimeout(() => {
         window.location.reload();
       }, 1500);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      await apiClient.put('/auth/change-password', {
+        current_password: passwords.current,
+        new_password: passwords.new
+      });
+      toast.success('Contraseña actualizada correctamente');
+      setPasswords({ current: '', new: '' });
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al cambiar contraseña');
     }
   };
 
@@ -148,6 +163,43 @@ export default function Configuration() {
             <HardDriveDownload size={20} />
             Generar Backup (.dump)
           </button>
+        </div>
+
+        {/* Change Password Card */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
+              <Key size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Seguridad</h2>
+              <p className="text-sm text-slate-500">Cambia la contraseña de tu cuenta</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="relative">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Contraseña Actual</label>
+              <input type={showPasswords ? "text" : "password"} value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
+              <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nueva Contraseña</label>
+              <input type={showPasswords ? "text" : "password"} value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full rounded-xl border border-slate-300 dark:border-slate-600 focus:border-indigo-500 bg-white dark:bg-slate-700 dark:text-white p-3 text-sm outline-none pr-10" />
+              <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <button
+              onClick={handleChangePassword}
+              disabled={!passwords.current || !passwords.new}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+            >
+              Actualizar Contraseña
+            </button>
+          </div>
         </div>
 
         {/* Maintenance Card */}

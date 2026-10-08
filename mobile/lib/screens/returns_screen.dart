@@ -136,7 +136,9 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
                           final invoiceNumber = sale['invoice_number'] ?? id.toString().substring(0, 8).toUpperCase();
                           final dateStr = sale['sale_date'] != null
                               ? DateTime.parse(sale['sale_date']).toLocal().toString().split('.')[0]
-                              : 'Fecha desconocida';
+                              : sale['created_at'] != null 
+                                ? DateTime.parse(sale['created_at']).toLocal().toString().split('.')[0] 
+                                : 'Fecha desconocida';
                           final total = sale['total'] ?? 0.0;
                           final items = sale['details'] as List<dynamic>? ?? [];
                           

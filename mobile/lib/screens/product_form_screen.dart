@@ -209,9 +209,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                           icon: PhosphorIconsRegular.tag,
                         ),
                         AppField(
-                          label: 'Código / SKU',
+                          label: 'Código / SKU (Opcional)',
                           controller: _skuController,
-                          required: true,
+                          required: false,
                           icon: PhosphorIconsRegular.barcode,
                         ),
                       ],

@@ -14,6 +14,7 @@ from app.application.dtos.sale import SaleCreate, SaleResponse
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from sqlalchemy import func, cast, String
 
 router = APIRouter()
 
@@ -28,6 +29,11 @@ async def create_sale(
         # Generar invoice_number con fecha y hora de Colombia
         invoice_number = datetime.now(ZoneInfo('America/Bogota')).strftime('%Y%m%d%H%M%S')
         
+        # Ensure sale_date is populated for correct sorting
+        actual_sale_date = sale_in.sale_date
+        if not actual_sale_date:
+            actual_sale_date = datetime.now(ZoneInfo('America/Bogota')).isoformat()
+        
         # 1. Crear Venta
         db_sale = Sale(
             business_id=business_id,
@@ -40,7 +46,7 @@ async def create_sale(
             payment_method=sale_in.payment_method,
             payment_status=sale_in.payment_status,
             notes=sale_in.notes,
-            sale_date=sale_in.sale_date,
+            sale_date=actual_sale_date,
             invoice_number=invoice_number
         )
         db.add(db_sale)
@@ -119,7 +125,9 @@ async def read_sales(
 ):
     stmt = select(Sale).options(
         selectinload(Sale.details).selectinload(SaleDetail.product)
-    ).where(Sale.business_id == business_id).order_by(Sale.created_at.desc())
+    ).where(Sale.business_id == business_id).order_by(
+        func.coalesce(Sale.sale_date, cast(Sale.created_at, String)).desc()
+    )
     result = await db.execute(stmt)
     sales = result.scalars().all()
     

@@ -243,7 +243,7 @@ export default function Purchases() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400">Monto Total</label>
-                <input type="number" step="any" value={debtForm.total_amount} onChange={e => setDebtForm({ ...debtForm, total_amount: e.target.value })} className="w-full border dark:border-slate-600 bg-slate-50 dark:bg-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" required />
+                <input type="text" inputMode="numeric" value={!debtForm.total_amount ? '' : Number(debtForm.total_amount).toLocaleString('es-CO')} onChange={e => { const val = e.target.value.replace(/\D/g, ''); setDebtForm({ ...debtForm, total_amount: val }); }} className="w-full border dark:border-slate-600 bg-slate-50 dark:bg-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none" placeholder="0" required />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400">Fecha de Crédito</label>
@@ -376,12 +376,12 @@ export default function Purchases() {
               <div>
                 <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-200 dark:text-slate-300">Cantidad a abonar</label>
                 <input
-                  type="number"
-                  step="any"
-                  value={paymentModal.amount}
-                  onChange={e => setPaymentModal({ ...paymentModal, amount: e.target.value })}
-                  className="w-full border dark:border-slate-600 bg-white dark:bg-slate-700 rounded-xl p-3 text-lg font-bold text-center dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  placeholder="0.00"
+                  type="text"
+                  inputMode="numeric"
+                  value={!paymentModal.amount ? '' : Number(paymentModal.amount).toLocaleString('es-CO')}
+                  onChange={e => { const val = e.target.value.replace(/\D/g, ''); setPaymentModal({ ...paymentModal, amount: val }); }}
+                  className="w-full border dark:border-slate-600 bg-white dark:bg-slate-700 rounded-xl p-3 text-lg font-bold text-center dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0"
                   required
                 />
               </div>

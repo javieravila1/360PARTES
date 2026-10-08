@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import uuid
 from datetime import datetime
 
@@ -33,6 +33,13 @@ class ProductBase(BaseModel):
     engine_displacement: Optional[str] = None
     compatibility: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
+
+    @field_validator('name', 'description', 'sku', 'barcode', 'notes', 'manufacturer_ref', 'oem', 'part_model', 'unit_measure', mode='before')
+    @classmethod
+    def to_upper(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 class ProductCreate(ProductBase):
     # Negocios adicionales (además del activo) donde también se creará el producto

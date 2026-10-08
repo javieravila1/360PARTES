@@ -18,7 +18,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const setToken = useAuthStore((state) => state.setToken);
+  const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema)
@@ -30,12 +30,12 @@ export default function Login() {
       formData.append('username', data.email.trim());
       formData.append('password', data.password.trim());
 
-      const response = await apiClient.post('/auth/login', formData, {
+      await apiClient.post('/auth/login', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
-      setToken(response.data.access_token);
+      setAuthenticated(true);
       toast.success('Sesión iniciada correctamente');
       navigate('/businesses');
     } catch (error: any) {

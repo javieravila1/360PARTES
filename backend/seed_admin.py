@@ -29,15 +29,8 @@ async def seed():
         else:
             print(f"User {admin_email} already exists!")
 
-        # Asegurar que el admin tenga al menos un negocio (la app exige X-Business-ID)
-        result = await db.execute(select(BusinessUser).where(BusinessUser.user_id == user.id))
-        if not result.scalars().first():
-            business = Business(name="Mi Negocio", currency="COP")
-            db.add(business)
-            await db.flush()
-            db.add(BusinessUser(user_id=user.id, business_id=business.id, role=BusinessRole.OWNER))
-            await db.commit()
-            print("Default business 'Mi Negocio' created for admin!")
+        # Asegurar que el admin no se quede atascado si no hay negocios, pero dejar que el usuario cree su primer negocio.
+        pass
 
 if __name__ == "__main__":
     asyncio.run(seed())

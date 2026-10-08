@@ -3,6 +3,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/businesses_provider.dart';
+import '../api/api_client.dart';
 import 'entity_list_screen.dart';
 import 'sales_history_screen.dart';
 import 'returns_screen.dart';
@@ -80,6 +81,11 @@ class MoreScreen extends ConsumerWidget {
             _item(context, isDark, icon: PhosphorIconsRegular.bookmarks, title: 'Marcas', subtitle: 'Gestiona las marcas', onTap: () => open(const EntityListScreen(entityType: EntityType.brands))),
           ]),
           const SizedBox(height: 24),
+          _sectionLabel('SEGURIDAD', muted),
+          _buildCardGroup(isDark: isDark, children: [
+            _item(context, isDark, icon: PhosphorIconsRegular.key, title: 'Cambiar contraseña', subtitle: 'Actualiza tu clave de acceso', onTap: () => _showChangePasswordDialog(context, ref)),
+          ]),
+          const SizedBox(height: 24),
           _buildCardGroup(isDark: isDark, children: [
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -152,6 +158,72 @@ class MoreScreen extends ConsumerWidget {
               },
               icon: PhosphorIconsRegular.signOut,
               color: FormColors.danger,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    bool isSaving = false;
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+
+    showFormSheet(
+      context: context,
+      title: 'Cambiar contraseña',
+      builder: (c, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppField(
+              label: 'Contraseña Actual',
+              controller: currentCtrl,
+              obscure: obscureCurrent,
+              required: true,
+              suffix: IconButton(
+                icon: Icon(obscureCurrent ? PhosphorIconsRegular.eye : PhosphorIconsRegular.eyeSlash, size: 20),
+                onPressed: () => setModalState(() => obscureCurrent = !obscureCurrent),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppField(
+              label: 'Nueva Contraseña',
+              controller: newCtrl,
+              obscure: obscureNew,
+              required: true,
+              suffix: IconButton(
+                icon: Icon(obscureNew ? PhosphorIconsRegular.eye : PhosphorIconsRegular.eyeSlash, size: 20),
+                onPressed: () => setModalState(() => obscureNew = !obscureNew),
+              ),
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Actualizar Contraseña',
+              loading: isSaving,
+              onPressed: () async {
+                if (currentCtrl.text.isEmpty || newCtrl.text.isEmpty) return;
+                setModalState(() => isSaving = true);
+                try {
+                  await apiClient.put('/auth/change-password', data: {
+                    'current_password': currentCtrl.text,
+                    'new_password': newCtrl.text,
+                  });
+                  if (c.mounted) {
+                    Navigator.pop(c);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada correctamente')));
+                  }
+                } catch (e) {
+                  if (c.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                  }
+                } finally {
+                  if (c.mounted) setModalState(() => isSaving = false);
+                }
+              },
             ),
           ],
         );

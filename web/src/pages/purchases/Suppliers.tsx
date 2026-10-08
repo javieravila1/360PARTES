@@ -27,6 +27,7 @@ export default function Suppliers() {
 
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ company_name: '', document_id: '', contact_person: '', phone: '' });
 
   const fetchSuppliers = async () => {
@@ -49,13 +50,30 @@ export default function Suppliers() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/contacts/suppliers', formData);
-      toast.success('Proveedor registrado');
+      if (editingId) {
+        await apiClient.put(`/contacts/suppliers/${editingId}`, formData);
+        toast.success('Proveedor actualizado');
+      } else {
+        await apiClient.post('/contacts/suppliers', formData);
+        toast.success('Proveedor registrado');
+      }
       setShowModal(false);
+      setEditingId(null);
       setFormData({ company_name: '', document_id: '', contact_person: '', phone: '' });
       fetchSuppliers();
     } catch (error) {
-      toast.error('Error al registrar proveedor');
+      toast.error('Error al guardar proveedor');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar este proveedor?')) return;
+    try {
+      await apiClient.delete(`/contacts/suppliers/${id}`);
+      toast.success('Proveedor eliminado');
+      fetchSuppliers();
+    } catch (error) {
+      toast.error('Error al eliminar proveedor');
     }
   };
 
@@ -68,7 +86,11 @@ export default function Suppliers() {
         <div className="flex gap-2">
           <ExcelActions data={suppliers} filename="Proveedores" />
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setFormData({ company_name: '', document_id: '', contact_person: '', phone: '' });
+              setEditingId(null);
+              setShowModal(true);
+            }}
             className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition"
           >
             <Plus size={20} className="mr-2" /> Nuevo Proveedor
@@ -100,8 +122,22 @@ export default function Suppliers() {
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{s.contact_person || '-'}</td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{s.phone || '-'}</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-blue-600 hover:text-blue-800 mr-3"><Edit size={18} /></button>
-                    <button className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
+                    <button 
+                      onClick={() => {
+                        setFormData({ 
+                          company_name: s.company_name, 
+                          document_id: s.document_id || '', 
+                          contact_person: s.contact_person || '', 
+                          phone: s.phone || '' 
+                        });
+                        setEditingId(s.id);
+                        setShowModal(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 mr-3"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))
@@ -136,7 +172,7 @@ export default function Suppliers() {
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="floating-container p-8 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nuevo Proveedor</h2>
+            <h2 className="text-xl font-bold mb-4">{editingId ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block label-field dark:text-slate-200">Nombre de la Empresa</label>

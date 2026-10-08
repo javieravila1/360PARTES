@@ -182,7 +182,8 @@ export default function Sales() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const date = new Date(sale.created_at || new Date()).toLocaleString();
+    const saleDateStr = sale.sale_date || sale.created_at || new Date().toISOString();
+    const date = new Date(saleDateStr).toLocaleString();
     const bName = currentBusiness?.name || 'Mi Negocio';
     const bId = currentBusiness?.id?.substring(0, 8) || '';
     
@@ -396,10 +397,21 @@ export default function Sales() {
                         <span className="text-[10px] font-bold text-slate-500 uppercase mr-1">Precio Venta:</span>
                         <span className="text-slate-500 font-bold">$</span>
                         <input
-                          type="number"
-                          value={item.selling_price}
-                          onChange={e => updatePrice(item.cart_key, Number(e.target.value))}
-                          className="w-20 bg-slate-50 dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded px-1 py-0.5 text-sm font-bold text-blue-600 dark:text-blue-400 outline-none"
+                          type="text"
+                          inputMode="numeric"
+                          value={item.selling_price === 0 ? '' : item.selling_price.toLocaleString('es-CO')}
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            let num = Number(val);
+                            if (num > 1000000000) num = 1000000000;
+                            updatePrice(item.cart_key, num);
+                          }}
+                          onBlur={() => {
+                            if (item.selling_price > 0 && item.selling_price < 100) {
+                              updatePrice(item.cart_key, 100);
+                            }
+                          }}
+                          className="w-28 bg-slate-50 dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded px-2 py-0.5 text-sm font-bold text-blue-600 dark:text-blue-400 outline-none text-right"
                         />
                       </div>
                     </div>
@@ -508,7 +520,7 @@ export default function Sales() {
                     <tr key={sale.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{sale.invoice_number || sale.id.substring(0, 8)}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
-                        {sale.sale_date ? sale.sale_date : new Date(sale.created_at).toLocaleDateString()}
+                        {new Date(sale.sale_date || sale.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-bold">{sale.payment_method}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">

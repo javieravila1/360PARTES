@@ -27,6 +27,7 @@ export default function Customers() {
 
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', document_id: '', phone: '', email: '' });
 
   const fetchCustomers = async () => {
@@ -49,13 +50,30 @@ export default function Customers() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/contacts/customers', formData);
-      toast.success('Cliente registrado');
+      if (editingId) {
+        await apiClient.put(`/contacts/customers/${editingId}`, formData);
+        toast.success('Cliente actualizado');
+      } else {
+        await apiClient.post('/contacts/customers', formData);
+        toast.success('Cliente registrado');
+      }
       setShowModal(false);
+      setEditingId(null);
       setFormData({ name: '', document_id: '', phone: '', email: '' });
       fetchCustomers();
     } catch (error) {
-      toast.error('Error al registrar cliente');
+      toast.error('Error al guardar cliente');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar este cliente?')) return;
+    try {
+      await apiClient.delete(`/contacts/customers/${id}`);
+      toast.success('Cliente eliminado');
+      fetchCustomers();
+    } catch (error) {
+      toast.error('Error al eliminar cliente');
     }
   };
 
@@ -68,7 +86,11 @@ export default function Customers() {
         <div className="flex gap-2">
           <ExcelActions data={customers} filename="Clientes" />
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setFormData({ name: '', document_id: '', phone: '', email: '' });
+              setEditingId(null);
+              setShowModal(true);
+            }}
             className="btn-primary"
           >
             <Plus size={20} className="mr-2" /> Nuevo Cliente
@@ -100,8 +122,22 @@ export default function Customers() {
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{c.phone || '-'}</td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{c.email || '-'}</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-blue-600 hover:text-blue-800 mr-3"><Edit size={18} /></button>
-                    <button className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
+                    <button 
+                      onClick={() => {
+                        setFormData({ 
+                          name: c.name, 
+                          document_id: c.document_id || '', 
+                          phone: c.phone || '', 
+                          email: c.email || '' 
+                        });
+                        setEditingId(c.id);
+                        setShowModal(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 mr-3"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(c.id)} className="text-red-600 hover:text-red-800"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))
@@ -136,7 +172,7 @@ export default function Customers() {
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="floating-container p-8 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nuevo Cliente</h2>
+            <h2 className="text-xl font-bold mb-4">{editingId ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block label-field dark:text-slate-200">Nombre Completo</label>

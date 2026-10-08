@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel
+from pydantic import BaseModel
 
 class Token(BaseModel):
     access_token: str
@@ -6,4 +6,8 @@ class Token(BaseModel):
 
 class TokenPayload(BaseModel):
     sub: str | None = None
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
 

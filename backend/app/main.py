@@ -50,12 +50,8 @@ origins = settings.CORS_ORIGINS.split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-
-    allow_origin_regex=".*", # Permite cualquier origen (localhost, IPs locales, puertos dinámicos) sin fallar por credenciales
-
-
-    allow_credentials=False,
-
+    allow_origin_regex="^https?://.*$", # Allow all http/https origins safely with credentials in FastAPI
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
