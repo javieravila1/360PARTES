@@ -55,8 +55,17 @@ class ContactService:
         return result.scalars().all()
 
     async def create_supplier(self, business_id: uuid.UUID, dto: SupplierCreate) -> Supplier:
-        db_supplier = Supplier(**dto.model_dump(), business_id=business_id)
+        data = dto.model_dump(exclude={"additional_business_ids"})
+        
+        db_supplier = Supplier(**data, business_id=business_id)
         self.db.add(db_supplier)
+        
+        if dto.additional_business_ids:
+            for extra_id in dto.additional_business_ids:
+                if extra_id != business_id:
+                    extra_supplier = Supplier(**data, business_id=extra_id)
+                    self.db.add(extra_supplier)
+                    
         await self.db.commit()
         await self.db.refresh(db_supplier)
         return db_supplier

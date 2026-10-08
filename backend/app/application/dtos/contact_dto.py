@@ -50,7 +50,7 @@ class SupplierBase(BaseModel):
         return v
 
 class SupplierCreate(SupplierBase):
-    pass
+    additional_business_ids: Optional[list[uuid.UUID]] = None
 
 class SupplierUpdate(SupplierBase):
     company_name: Optional[str] = None

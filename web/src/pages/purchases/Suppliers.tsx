@@ -5,6 +5,11 @@ import { Plus, Edit, Trash2, Truck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ExcelActions } from '../../components/ExcelActions';
 
+interface BusinessResponse {
+  business: { id: string; name: string };
+  role: string;
+}
+
 interface Supplier {
   id: string;
   company_name: string;
@@ -29,6 +34,18 @@ export default function Suppliers() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ company_name: '', document_id: '', contact_person: '', phone: '' });
+  
+  const [userBusinesses, setUserBusinesses] = useState<BusinessResponse[]>([]);
+  const [selectedExtraBusinesses, setSelectedExtraBusinesses] = useState<string[]>([]);
+
+  const fetchBusinesses = async () => {
+    try {
+      const { data } = await apiClient.get('/businesses/');
+      setUserBusinesses(data);
+    } catch (error) {
+      console.error('Error fetching businesses');
+    }
+  };
 
   const fetchSuppliers = async () => {
     try {
@@ -45,6 +62,7 @@ export default function Suppliers() {
     if (currentBusiness) {
       fetchSuppliers();
     }
+    fetchBusinesses();
   }, [currentBusiness]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,12 +72,16 @@ export default function Suppliers() {
         await apiClient.put(`/contacts/suppliers/${editingId}`, formData);
         toast.success('Proveedor actualizado');
       } else {
-        await apiClient.post('/contacts/suppliers', formData);
+        await apiClient.post('/contacts/suppliers', {
+          ...formData,
+          additional_business_ids: selectedExtraBusinesses
+        });
         toast.success('Proveedor registrado');
       }
       setShowModal(false);
       setEditingId(null);
       setFormData({ company_name: '', document_id: '', contact_person: '', phone: '' });
+      setSelectedExtraBusinesses([]);
       fetchSuppliers();
     } catch (error) {
       toast.error('Error al guardar proveedor');
@@ -88,6 +110,7 @@ export default function Suppliers() {
           <button 
             onClick={() => {
               setFormData({ company_name: '', document_id: '', contact_person: '', phone: '' });
+              setSelectedExtraBusinesses([]);
               setEditingId(null);
               setShowModal(true);
             }}
@@ -190,6 +213,35 @@ export default function Suppliers() {
                 <label className="block label-field dark:text-slate-200">Teléfono</label>
                 <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="mt-1 block w-full rounded-lg input-field" />
               </div>
+
+              {!editingId && userBusinesses.length > 1 && (
+                <div className="pt-2">
+                  <label className="block label-field dark:text-slate-200 mb-2">También agregar a los siguientes negocios:</label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto pr-2 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {userBusinesses
+                      .filter(b => b.business.id !== currentBusiness?.id)
+                      .map(b => (
+                        <label key={b.business.id} className="flex items-center space-x-2 text-sm text-slate-700 dark:text-slate-300">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={selectedExtraBusinesses.includes(b.business.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedExtraBusinesses([...selectedExtraBusinesses, b.business.id]);
+                              } else {
+                                setSelectedExtraBusinesses(selectedExtraBusinesses.filter(id => id !== b.business.id));
+                              }
+                            }}
+                          />
+                          <span>{b.business.name}</span>
+                        </label>
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end space-x-3 mt-6">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 rounded-lg">Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Guardar</button>
