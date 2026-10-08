@@ -15,3 +15,11 @@ class EmailChange(BaseModel):
     current_password: str
     new_email: str
 
+class ForgotPassword(BaseModel):
+    email: str
+
+class ResetPassword(BaseModel):
+    email: str
+    pin: str
+    new_password: str
+

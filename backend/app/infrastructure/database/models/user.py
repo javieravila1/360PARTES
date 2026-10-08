@@ -1,5 +1,6 @@
-﻿import enum
-from sqlalchemy import String, Boolean, Enum
+import enum
+from datetime import datetime
+from sqlalchemy import String, Boolean, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
 from app.infrastructure.database.models.base import BaseModel
@@ -19,6 +20,9 @@ class User(BaseModel):
     profile_picture: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     global_role: Mapped[UserRoleGlobal] = mapped_column(Enum(UserRoleGlobal), default=UserRoleGlobal.USER)
+    
+    reset_password_pin: Mapped[str | None] = mapped_column(String, nullable=True)
+    reset_password_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     business_users: Mapped[List["BusinessUser"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 

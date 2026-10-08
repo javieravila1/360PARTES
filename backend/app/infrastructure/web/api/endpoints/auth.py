@@ -9,7 +9,11 @@ from app.core.security import verify_password, create_access_token, get_password
 from app.core.config import settings
 from app.infrastructure.database.models.user import User
 from app.application.dtos.user import UserCreate, UserResponse
-from app.application.dtos.auth import Token, PasswordChange, EmailChange
+import random
+import string
+from datetime import datetime, timezone, timedelta
+from app.core.email import send_reset_pin_email
+from app.application.dtos.auth import Token, PasswordChange, EmailChange, ForgotPassword, ResetPassword
 from app.infrastructure.web.api.deps import get_current_user
 
 router = APIRouter()
@@ -130,4 +134,55 @@ async def change_email(
     await db.commit()
     
     return {"message": "Correo actualizado exitosamente"}
+
+@router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPassword,
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(User).where(User.email == data.email.strip())
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return {"message": "Si el correo está registrado, se ha enviado un PIN."}
+        
+    pin = ''.join(random.choices(string.digits, k=6))
+    user.reset_password_pin = pin
+    user.reset_password_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    
+    db.add(user)
+    await db.commit()
+    
+    await send_reset_pin_email(user.email, pin)
+    
+    return {"message": "Si el correo está registrado, se ha enviado un PIN."}
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPassword,
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(User).where(User.email == data.email.strip())
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="PIN incorrecto o expirado")
+        
+    if not user.reset_password_pin or user.reset_password_pin != data.pin:
+        raise HTTPException(status_code=400, detail="PIN incorrecto o expirado")
+        
+    # Verificar expiración
+    if not user.reset_password_expires or user.reset_password_expires < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="El PIN ha expirado")
+        
+    user.hashed_password = get_password_hash(data.new_password)
+    user.reset_password_pin = None
+    user.reset_password_expires = None
+    
+    db.add(user)
+    await db.commit()
+    
+    return {"message": "Contraseña restablecida exitosamente"}
 
