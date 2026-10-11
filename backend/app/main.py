@@ -45,7 +45,7 @@ app = FastAPI(
 )
 
 # Parse origins for specific domains if needed, but allow all via regex for dev
-origins = settings.CORS_ORIGINS.split(",")
+origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip() and o.strip() != "*"]
 
 app.add_middleware(
     CORSMiddleware,

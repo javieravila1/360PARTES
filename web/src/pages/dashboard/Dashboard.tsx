@@ -15,12 +15,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('today');
   const [chartTimeFilter, setChartTimeFilter] = useState('this_month');
+  const [selectedDate, setSelectedDate] = useState('');
 
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
       try {
-        const { data } = await apiClient.get(`/dashboard/?time_filter=${timeFilter}&chart_time_filter=${chartTimeFilter}`);
+        const dateParam = selectedDate ? `&date=${selectedDate}` : '';
+        const { data } = await apiClient.get(`/dashboard/?time_filter=${timeFilter}&chart_time_filter=${chartTimeFilter}${dateParam}`);
         setMetrics(data);
       } catch (error) {
         toast.error('Error al cargar métricas del dashboard');
@@ -33,7 +35,7 @@ export default function Dashboard() {
     const handler = () => { if (currentBusiness) fetchMetrics(); };
     window.addEventListener('db_updated', handler);
     return () => window.removeEventListener('db_updated', handler);
-  }, [currentBusiness, timeFilter, chartTimeFilter]);
+  }, [currentBusiness, timeFilter, chartTimeFilter, selectedDate]);
 
   const StatCard = ({ icon: Icon, title, value, textColor, glowColor }: any) => (
     <div className="floating-card p-6 flex items-center justify-between group overflow-hidden relative">
@@ -68,12 +70,31 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-3">
+          <div className="relative flex items-center">
+            <input
+              id="dashboard-date-picker"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 px-3 py-2.5 rounded-xl shadow-sm outline-none text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:ring-2 focus:ring-indigo-500/20 dark:[color-scheme:dark]"
+            />
+            {selectedDate && (
+              <button
+                id="dashboard-date-clear"
+                onClick={() => setSelectedDate('')}
+                className="ml-2 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
           <div className="relative">
             <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
             <select 
               value={timeFilter} 
               onChange={(e) => setTimeFilter(e.target.value)}
-              className="appearance-none bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 pl-11 pr-10 py-2.5 rounded-xl shadow-sm outline-none text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all focus:ring-2 focus:ring-indigo-500/20"
+              disabled={!!selectedDate}
+              className="disabled:opacity-50 appearance-none bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 pl-11 pr-10 py-2.5 rounded-xl shadow-sm outline-none text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="today">Hoy</option>
               <option value="this_week">Esta semana</option>
@@ -134,7 +155,7 @@ export default function Dashboard() {
           <div className="floating-card p-6">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                Evolución de Ventas
+                Evolución de Ventas y Ganancias
               </h3>
               <select
                 value={chartTimeFilter}
@@ -157,6 +178,10 @@ export default function Dashboard() {
                       <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                     </linearGradient>
+                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
                   <XAxis 
@@ -173,7 +198,7 @@ export default function Dashboard() {
                     stroke="#94a3b8" fontSize={12} fontWeight={600} width={80} axisLine={false} tickLine={false}
                   />
                   <Tooltip 
-                    formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Ventas']}
+                    formatter={(value: any, name: any) => [`$${Number(value).toLocaleString()}`, name === 'profit' ? 'Ganancias' : 'Ventas']}
                     labelFormatter={(label: any) => {
                       const date = new Date(label as string);
                       const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
@@ -182,6 +207,7 @@ export default function Dashboard() {
                     contentStyle={{ borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px', fontWeight: 600, color: '#1e293b' }}
                   />
                   <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 3, className: 'shadow-lg'}} />
+                  <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" activeDot={{r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 3}} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

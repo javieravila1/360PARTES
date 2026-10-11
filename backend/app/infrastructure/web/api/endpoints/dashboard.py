@@ -21,13 +21,27 @@ router = APIRouter()
 async def get_dashboard_metrics(
     time_filter: str = None,
     chart_time_filter: str = 'all_time',
+    date: str = None,
     business_id: uuid.UUID = Depends(get_current_business_id),
     db: AsyncSession = Depends(get_db)
 ):
     now = datetime.now()
+    real_now = now
+    selected_date = None
+    if date:
+        try:
+            selected_date = datetime.strptime(date[:10], "%Y-%m-%d")
+        except ValueError:
+            selected_date = None
+    if selected_date:
+        # Fecha de referencia para los rangos del gráfico
+        now = selected_date
     start_date = None
     end_date = None
-    if time_filter == 'today':
+    if selected_date:
+        start_date = selected_date
+        end_date = selected_date + timedelta(days=1)
+    elif time_filter == 'today':
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=1)
     elif time_filter == 'this_week':
@@ -230,17 +244,37 @@ async def get_dashboard_metrics(
     res_chart = await db.execute(stmt_chart)
     sales_map = {str(r.day): float(r.daily_total) for r in res_chart.all()}
     
+    stmt_chart_profit = (
+        select(
+            eff_sale_date_group.label("day"),
+            func.sum(SaleDetail.total - (func.coalesce(ProductBatch.cost_price, Product.cost_price, 0) * SaleDetail.quantity)).label("daily_profit")
+        )
+        .select_from(SaleDetail)
+        .join(Sale, Sale.id == SaleDetail.sale_id)
+        .outerjoin(Product, SaleDetail.product_id == Product.id)
+        .outerjoin(ProductBatch, SaleDetail.batch_id == ProductBatch.id)
+        .where(
+            Sale.business_id == business_id,
+            eff_sale_date_group >= chart_start_str,
+            eff_sale_date_group < chart_end_str
+        )
+        .group_by(eff_sale_date_group)
+    )
+    res_chart_profit = await db.execute(stmt_chart_profit)
+    profit_map = {str(r.day): float(r.daily_profit or 0) for r in res_chart_profit.all()}
+
     sales_chart = []
-    # Generar días para la gráfica (no más allá de hoy para evitar ver el futuro vacío, a menos que haya start_date futuro, lo cual es raro)
+    # Generar días para la gráfica (no más allá de hoy, o del día seleccionado si es futuro)
     current_day = chart_start_date
-    today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    limit_day = min(chart_end_date, today_midnight + timedelta(days=1))
+    today_midnight = real_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    limit_day = min(chart_end_date, max(today_midnight, now.replace(hour=0, minute=0, second=0, microsecond=0)) + timedelta(days=1))
     
     while current_day < limit_day:
         day_str = current_day.strftime("%Y-%m-%d")
         sales_chart.append({
             "date": day_str,
-            "total": sales_map.get(day_str, 0.0)
+            "total": sales_map.get(day_str, 0.0),
+            "profit": profit_map.get(day_str, 0.0)
         })
         current_day += timedelta(days=1)
 
