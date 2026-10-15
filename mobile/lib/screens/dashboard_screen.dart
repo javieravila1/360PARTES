@@ -98,6 +98,8 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   _buildHeaderCard(metrics, isDark, context, ref),
                   const SizedBox(height: 24),
+                  _buildInventoryCostSection(metrics, isDark, context, ref),
+                  const SizedBox(height: 24),
                   _buildQuickActions(isDark, context),
                   const SizedBox(height: 24),
                   _buildLowStockSection(lowStock, isDark),
@@ -246,6 +248,194 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildInventoryCostSection(Map<String, dynamic> metrics, bool isDark, BuildContext context, WidgetRef ref) {
+    final borderColor = isDark ? const Color(0xFF273244) : const Color(0xFFE2E8F0);
+    final cardColor = isDark ? const Color(0xFF111827) : Colors.white;
+    final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final currentBusiness = ref.watch(currentBusinessProvider);
+    final currentBizId = currentBusiness?['id']?.toString();
+    final invCost = ((metrics['inventory_cost'] ?? metrics['inventory_value']) as num? ?? 0).toDouble();
+    final invRetail = (metrics['inventory_value'] as num? ?? 0).toDouble();
+    final bizInvList = metrics['businesses_inventory'] as List<dynamic>? ?? [];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 16, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(PhosphorIconsRegular.archive, color: const Color(0xFF0D9488), size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Costo inventario',
+                            style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '\$${invCost.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(width: 1, height: 38, color: borderColor),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(PhosphorIconsRegular.coin, color: const Color(0xFF0284C7), size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Valor venta actual',
+                            style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '\$${invRetail.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0284C7),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (bizInvList.length > 1) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Divider(color: borderColor, height: 1),
+              ),
+              Text(
+                'Inventario por negocio',
+                style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+              ),
+              const SizedBox(height: 10),
+              ...bizInvList.map((biz) {
+                final bId = biz['business_id']?.toString();
+                final isCur = bId == currentBizId || biz['is_current'] == true;
+                final bCost = (biz['inventory_cost'] as num? ?? 0).toDouble();
+                final bProds = (biz['total_products'] as num? ?? 0).toInt();
+
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: isCur ? null : () async {
+                    final businessesAsync = ref.read(businessesProvider);
+                    final allB = businessesAsync.value ?? [];
+                    final target = allB.firstWhere(
+                      (item) => item['business']['id']?.toString() == bId,
+                      orElse: () => {'business': {'id': bId, 'name': biz['business_name']}},
+                    )['business'];
+
+                    await ref.read(currentBusinessProvider.notifier).setBusiness(bId!, target);
+                    ref.invalidate(dashboardProvider);
+                    ref.invalidate(inventoryProvider);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isCur
+                          ? const Color(0xFF0D9488).withValues(alpha: isDark ? 0.15 : 0.08)
+                          : (isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isCur ? const Color(0xFF0D9488).withValues(alpha: 0.3) : borderColor,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      biz['business_name'] ?? 'Negocio',
+                                      style: TextStyle(
+                                        fontWeight: isCur ? FontWeight.w700 : FontWeight.w600,
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isCur) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0D9488).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'Actual',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF0D9488)),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$bProds productos',
+                                style: TextStyle(color: muted, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '\$${bCost.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isCur ? const Color(0xFF0D9488) : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

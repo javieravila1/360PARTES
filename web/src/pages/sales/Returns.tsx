@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import apiClient from '../../api/client';
 import { useBusinessStore } from '../../store/businessStore';
 import { Search, Undo2, ChevronDown, ChevronUp } from 'lucide-react';

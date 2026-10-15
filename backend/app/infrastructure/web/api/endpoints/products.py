@@ -12,7 +12,7 @@ from app.infrastructure.database.models.brand import Brand
 from app.infrastructure.database.models.category import Category
 from app.infrastructure.database.models.business_user import BusinessUser
 from app.infrastructure.database.models.user import User
-from app.infrastructure.database.models.inventory import ProductBatch
+from app.infrastructure.database.models.inventory import ProductBatch, InventoryMovement
 from app.application.dtos.product import ProductCreate, ProductResponse, ProductUpdate
 
 router = APIRouter()
@@ -37,6 +37,19 @@ async def create_product(
         selling_price=data.get("selling_price", 0)
     )
     db.add(initial_batch)
+
+    if data.get("current_stock", 0) > 0:
+        movement = InventoryMovement(
+            business_id=business_id,
+            product_id=db_product.id,
+            user_id=current_user.id,
+            movement_type="ENTRADA_COMPRA",
+            quantity=data.get("current_stock", 0),
+            previous_stock=0,
+            new_stock=data.get("current_stock", 0),
+            reference_id="STOCK_INICIAL"
+        )
+        db.add(movement)
 
     # Copiar el producto a otros negocios del usuario
     extra_ids = {b for b in product_in.extra_business_ids if b != business_id}
@@ -81,6 +94,17 @@ async def create_product(
                 cost_price=copy_data.get("cost_price", 0),
                 selling_price=copy_data.get("selling_price", 0)
             ))
+            if copy_data.get("current_stock", 0) > 0:
+                db.add(InventoryMovement(
+                    business_id=target_id,
+                    product=new_prod,
+                    user_id=current_user.id,
+                    movement_type="ENTRADA_COMPRA",
+                    quantity=copy_data.get("current_stock", 0),
+                    previous_stock=0,
+                    new_stock=copy_data.get("current_stock", 0),
+                    reference_id="STOCK_INICIAL"
+                ))
 
     await db.commit()
     
@@ -161,10 +185,6 @@ class StockIncrement(BaseModel):
     quantity: float
     cost_price: Optional[float] = None
     selling_price: Optional[float] = None
-
-from app.infrastructure.database.models.inventory import InventoryMovement
-from app.infrastructure.web.api.deps import get_current_user
-from app.infrastructure.database.models.user import User
 
 @router.patch("/{product_id}/stock", response_model=ProductResponse)
 async def increment_stock(

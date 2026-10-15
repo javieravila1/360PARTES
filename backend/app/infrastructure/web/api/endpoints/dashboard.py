@@ -1,77 +1,254 @@
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, asc
-from datetime import datetime
+from sqlalchemy import select, func, desc, asc, cast, String, or_, and_
+from datetime import datetime, timedelta
 import uuid
 
 from app.core.database import get_db
-from app.infrastructure.web.api.deps import get_current_business_id
+from app.infrastructure.web.api.deps import get_current_business_id, get_current_user
 from app.infrastructure.database.models.sale import Sale, SaleDetail
 from app.infrastructure.database.models.product import Product
 from app.infrastructure.database.models.expense import Expense
 from app.infrastructure.database.models.debt import Debt
-from app.infrastructure.database.models.inventory import ProductBatch
-
-from datetime import datetime, timedelta
+from app.infrastructure.database.models.inventory import ProductBatch, InventoryMovement
+from app.infrastructure.database.models.purchase import Purchase, PurchaseDetail
+from app.infrastructure.database.models.contacts import Supplier
+from app.infrastructure.database.models.user import User
+from app.infrastructure.database.models.business import Business
+from app.infrastructure.database.models.business_user import BusinessUser
 
 router = APIRouter()
+
+
+async def _calculate_business_inventory_cost(db: AsyncSession, biz_id: uuid.UUID) -> float:
+    # 1. Sumar lotes con stock positivo
+    stmt_batches = select(
+        func.sum(func.coalesce(ProductBatch.cost_price, 0) * func.coalesce(ProductBatch.current_stock, 0))
+    ).where(
+        ProductBatch.business_id == biz_id,
+        ProductBatch.current_stock > 0
+    )
+    res_batches = await db.execute(stmt_batches)
+    batches_val = res_batches.scalar() or 0.0
+
+    # 2. Sumar productos con stock positivo que no tengan lotes
+    stmt_no_batches = select(
+        func.sum(func.coalesce(Product.cost_price, 0) * func.coalesce(Product.current_stock, 0))
+    ).where(
+        Product.business_id == biz_id,
+        Product.current_stock > 0,
+        ~Product.id.in_(select(ProductBatch.product_id).where(ProductBatch.business_id == biz_id))
+    )
+    res_no_batches = await db.execute(stmt_no_batches)
+    no_batches_val = res_no_batches.scalar() or 0.0
+
+    total_val = float(batches_val) + float(no_batches_val)
+    if total_val == 0.0:
+        # Fallback a productos directos por si no se crearon lotes
+        stmt_fallback = select(
+            func.sum(func.coalesce(Product.cost_price, 0) * func.coalesce(Product.current_stock, 0))
+        ).where(
+            Product.business_id == biz_id,
+            Product.current_stock > 0
+        )
+        res_fb = await db.execute(stmt_fallback)
+        total_val = float(res_fb.scalar() or 0.0)
+    return total_val
+
+async def _calculate_business_inventory_retail_value(db: AsyncSession, biz_id: uuid.UUID) -> float:
+    # 1. Sumar lotes con stock positivo valorados al precio de venta
+    stmt_batches = select(
+        func.sum(func.coalesce(ProductBatch.selling_price, Product.selling_price, 0) * func.coalesce(ProductBatch.current_stock, 0))
+    ).select_from(ProductBatch).outerjoin(
+        Product, ProductBatch.product_id == Product.id
+    ).where(
+        ProductBatch.business_id == biz_id,
+        ProductBatch.current_stock > 0
+    )
+    res_batches = await db.execute(stmt_batches)
+    batches_val = res_batches.scalar() or 0.0
+
+    # 2. Sumar productos con stock positivo que no tengan lotes valorados al precio de venta
+    stmt_no_batches = select(
+        func.sum(func.coalesce(Product.selling_price, 0) * func.coalesce(Product.current_stock, 0))
+    ).where(
+        Product.business_id == biz_id,
+        Product.current_stock > 0,
+        ~Product.id.in_(select(ProductBatch.product_id).where(ProductBatch.business_id == biz_id))
+    )
+    res_no_batches = await db.execute(stmt_no_batches)
+    no_batches_val = res_no_batches.scalar() or 0.0
+
+    total_val = float(batches_val) + float(no_batches_val)
+    if total_val == 0.0:
+        # Fallback a productos directos
+        stmt_fallback = select(
+            func.sum(func.coalesce(Product.selling_price, 0) * func.coalesce(Product.current_stock, 0))
+        ).where(
+            Product.business_id == biz_id,
+            Product.current_stock > 0
+        )
+        res_fb = await db.execute(stmt_fallback)
+        total_val = float(res_fb.scalar() or 0.0)
+    return total_val
+
+async def _calculate_business_period_inventory_cost(
+    db: AsyncSession, 
+    biz_id: uuid.UUID, 
+    start_date_str: str | None = None, 
+    end_date_str: str | None = None
+) -> float:
+    # Si no hay filtro de fechas, retornar el costo del stock actual en almacén
+    if not start_date_str:
+        return await _calculate_business_inventory_cost(db, biz_id)
+
+    # 1. Compras registradas en el periodo (tabla purchases)
+    eff_purch_date = func.substr(func.coalesce(cast(Purchase.purchase_date, String), cast(Purchase.created_at, String)), 1, 10)
+    cond_purchases = [
+        Purchase.business_id == biz_id,
+        eff_purch_date >= start_date_str
+    ]
+    if end_date_str:
+        cond_purchases.append(eff_purch_date < end_date_str)
+
+    stmt_purchases = select(func.sum(func.coalesce(Purchase.total, 0))).where(*cond_purchases)
+    res_purchases = await db.execute(stmt_purchases)
+    purchases_total = float(res_purchases.scalar() or 0.0)
+
+    # 2. Entradas directas de inventario en el periodo (evitar duplicar compras ya sumadas)
+    subq_purch_ids = select(cast(Purchase.id, String)).where(Purchase.business_id == biz_id)
+    eff_mov_date = func.substr(cast(InventoryMovement.created_at, String), 1, 10)
+    
+    cond_movements = [
+        InventoryMovement.business_id == biz_id,
+        InventoryMovement.movement_type.in_(["ENTRADA_COMPRA", "ENTRADA_AJUSTE", "STOCK_INICIAL"]),
+        eff_mov_date >= start_date_str,
+        or_(
+            InventoryMovement.reference_id.is_(None),
+            ~InventoryMovement.reference_id.in_(subq_purch_ids)
+        )
+    ]
+    if end_date_str:
+        cond_movements.append(eff_mov_date < end_date_str)
+
+    stmt_movements = (
+        select(
+            func.sum(
+                func.coalesce(InventoryMovement.quantity, 0) * func.coalesce(Product.cost_price, 0)
+            )
+        )
+        .select_from(InventoryMovement)
+        .join(Product, InventoryMovement.product_id == Product.id)
+        .where(*cond_movements)
+    )
+    res_movements = await db.execute(stmt_movements)
+    movements_total = float(res_movements.scalar() or 0.0)
+
+    # 3. Productos creados en el periodo con stock inicial que no tengan movimiento
+    eff_prod_date = func.substr(cast(Product.created_at, String), 1, 10)
+    subq_mov_prod_ids = select(InventoryMovement.product_id).where(
+        InventoryMovement.business_id == biz_id,
+        InventoryMovement.movement_type.in_(["ENTRADA_COMPRA", "ENTRADA_AJUSTE", "STOCK_INICIAL"])
+    )
+    cond_direct_prods = [
+        Product.business_id == biz_id,
+        Product.current_stock > 0,
+        eff_prod_date >= start_date_str,
+        ~Product.id.in_(subq_mov_prod_ids)
+    ]
+    if end_date_str:
+        cond_direct_prods.append(eff_prod_date < end_date_str)
+
+    stmt_direct_prods = select(
+        func.sum(
+            func.coalesce(Product.current_stock, 0) * func.coalesce(Product.cost_price, 0)
+        )
+    ).where(*cond_direct_prods)
+    res_direct_prods = await db.execute(stmt_direct_prods)
+    direct_prods_total = float(res_direct_prods.scalar() or 0.0)
+
+    return float(round(purchases_total + movements_total + direct_prods_total, 2))
 
 @router.get("/")
 async def get_dashboard_metrics(
     time_filter: str = None,
     chart_time_filter: str = 'all_time',
     date: str = None,
+    start_date: str = None,
+    end_date: str = None,
     business_id: uuid.UUID = Depends(get_current_business_id),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     now = datetime.now()
     real_now = now
-    selected_date = None
-    if date:
+
+    parsed_start = None
+    parsed_end = None
+
+    if start_date:
         try:
-            selected_date = datetime.strptime(date[:10], "%Y-%m-%d")
+            parsed_start = datetime.strptime(start_date[:10], "%Y-%m-%d")
         except ValueError:
-            selected_date = None
-    if selected_date:
-        # Fecha de referencia para los rangos del gráfico
-        now = selected_date
-    start_date = None
-    end_date = None
-    if selected_date:
-        start_date = selected_date
-        end_date = selected_date + timedelta(days=1)
+            parsed_start = None
+    elif date:
+        try:
+            parsed_start = datetime.strptime(date[:10], "%Y-%m-%d")
+        except ValueError:
+            parsed_start = None
+
+    if end_date:
+        try:
+            parsed_end = datetime.strptime(end_date[:10], "%Y-%m-%d") + timedelta(days=1)
+        except ValueError:
+            parsed_end = None
+    elif parsed_start and (date or not end_date):
+        parsed_end = parsed_start + timedelta(days=1)
+
+    has_custom_range = bool(parsed_start)
+
+    if has_custom_range:
+        start_date_dt = parsed_start
+        end_date_dt = parsed_end or (parsed_start + timedelta(days=1))
+        # Fecha de referencia para gráficos
+        now = start_date_dt
     elif time_filter == 'today':
-        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date + timedelta(days=1)
+        start_date_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date_dt = start_date_dt + timedelta(days=1)
     elif time_filter == 'this_week':
         # Consider week starts on Monday
-        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date + timedelta(days=7)
+        start_date_dt = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date_dt = start_date_dt + timedelta(days=7)
     elif time_filter == 'this_month':
-        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        if start_date.month == 12:
-            end_date = start_date.replace(year=start_date.year + 1, month=1)
+        start_date_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if start_date_dt.month == 12:
+            end_date_dt = start_date_dt.replace(year=start_date_dt.year + 1, month=1)
         else:
-            end_date = start_date.replace(month=start_date.month + 1)
+            end_date_dt = start_date_dt.replace(month=start_date_dt.month + 1)
     elif time_filter == 'this_semester':
         month = 1 if now.month <= 6 else 7
-        start_date = now.replace(month=month, day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_date_dt = now.replace(month=month, day=1, hour=0, minute=0, second=0, microsecond=0)
         if month == 1:
-            end_date = start_date.replace(month=7)
+            end_date_dt = start_date_dt.replace(month=7)
         else:
-            end_date = start_date.replace(year=start_date.year + 1, month=1)
+            end_date_dt = start_date_dt.replace(year=start_date_dt.year + 1, month=1)
     elif time_filter == 'this_year':
-        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date.replace(year=start_date.year + 1)
+        start_date_dt = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date_dt = start_date_dt.replace(year=start_date_dt.year + 1)
+    else:
+        start_date_dt = None
+        end_date_dt = None
 
-    from sqlalchemy import cast, String
+    start_date_str = None
+    end_date_str = None
+
     cond_sales = [Sale.business_id == business_id]
     cond_expenses = [Expense.business_id == business_id]
 
-    if start_date:
-        start_date_str = start_date.strftime("%Y-%m-%d")
-        end_date_str = end_date.strftime("%Y-%m-%d") if end_date else None
+    if start_date_dt:
+        start_date_str = start_date_dt.strftime("%Y-%m-%d")
+        end_date_str = end_date_dt.strftime("%Y-%m-%d") if end_date_dt else None
         
         # Filtrar por fecha manual si existe, si no por fecha de creación (substr extrae YYYY-MM-DD)
         eff_sale_date = func.substr(func.coalesce(Sale.sale_date, cast(Sale.created_at, String)), 1, 10)
@@ -169,23 +346,56 @@ async def get_dashboard_metrics(
     total_expenses = result_expenses.scalar() or 0.0
 
     # Total Proveedores (Static)
-    from app.infrastructure.database.models.contacts import Supplier
     stmt_suppliers = select(func.count(Supplier.id)).where(Supplier.business_id == business_id)
     result_suppliers = await db.execute(stmt_suppliers)
     total_suppliers = result_suppliers.scalar() or 0
 
-    # Valor Inventario (Static)
-    stmt_inv_value = select(func.sum(Product.cost_price * Product.current_stock)).where(Product.business_id == business_id)
-    result_inv_value = await db.execute(stmt_inv_value)
-    inventory_value = result_inv_value.scalar() or 0.0
+    # Valor y Costo Inventario Negocio Actual
+    # Si se aplicó filtro de fechas, 'inventory_cost' refleja el costo de compras e ingresos del periodo.
+    # Si no, refleja la valuación total al costo de todo el stock actual.
+    inventory_cost = await _calculate_business_period_inventory_cost(db, business_id, start_date_str, end_date_str)
+    current_inventory_cost = await _calculate_business_inventory_cost(db, business_id)
+    inventory_value = await _calculate_business_inventory_retail_value(db, business_id)
 
-    # Sales Chart (Dynamic based on chart_time_filter)
+    # Costo Total de Inventario y Valor Comercial para cada negocio del usuario
+    stmt_user_businesses = (
+        select(Business)
+        .join(BusinessUser, Business.id == BusinessUser.business_id)
+        .where(BusinessUser.user_id == current_user.id, Business.is_active == True)
+        .order_by(Business.name)
+    )
+    user_businesses = (await db.execute(stmt_user_businesses)).scalars().all()
+
+    businesses_inventory = []
+    for b in user_businesses:
+        b_cost = await _calculate_business_period_inventory_cost(db, b.id, start_date_str, end_date_str)
+        b_curr_cost = await _calculate_business_inventory_cost(db, b.id)
+        b_val = await _calculate_business_inventory_retail_value(db, b.id)
+        stmt_b_prods = select(func.count(Product.id)).where(Product.business_id == b.id)
+        res_b_prods = await db.execute(stmt_b_prods)
+        b_prods_count = res_b_prods.scalar() or 0
+
+        businesses_inventory.append({
+            "business_id": str(b.id),
+            "business_name": b.name,
+            "inventory_cost": b_cost,
+            "current_inventory_cost": b_curr_cost,
+            "inventory_value": b_val,
+            "potential_profit": max(0.0, b_val - b_curr_cost),
+            "total_products": b_prods_count,
+            "is_current": b.id == business_id
+        })
+
+    # Sales Chart (Dynamic based on custom range or chart_time_filter)
     eff_sale_date_group = func.substr(func.coalesce(Sale.sale_date, cast(Sale.created_at, String)), 1, 10)
     
     chart_start_date = None
     chart_end_date = None
     
-    if chart_time_filter == 'today':
+    if has_custom_range:
+        chart_start_date = start_date_dt
+        chart_end_date = end_date_dt
+    elif chart_time_filter == 'today':
         chart_start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
         chart_end_date = chart_start_date + timedelta(days=1)
     elif chart_time_filter == 'this_week':
@@ -221,8 +431,10 @@ async def get_dashboard_metrics(
         chart_start_date = now - timedelta(days=30)
         chart_end_date = now + timedelta(days=1)
 
-    # Asegurar que haya al menos 7 días de diferencia para poder dibujar una línea en la gráfica
-    if (chart_end_date - chart_start_date).days < 7:
+    if has_custom_range:
+        if (chart_end_date - chart_start_date).days < 2:
+            chart_end_date = chart_start_date + timedelta(days=2)
+    elif (chart_end_date - chart_start_date).days < 7:
         chart_start_date = chart_end_date - timedelta(days=7)
 
     chart_start_str = chart_start_date.strftime("%Y-%m-%d")
@@ -264,10 +476,12 @@ async def get_dashboard_metrics(
     profit_map = {str(r.day): float(r.daily_profit or 0) for r in res_chart_profit.all()}
 
     sales_chart = []
-    # Generar días para la gráfica (no más allá de hoy, o del día seleccionado si es futuro)
     current_day = chart_start_date
-    today_midnight = real_now.replace(hour=0, minute=0, second=0, microsecond=0)
-    limit_day = min(chart_end_date, max(today_midnight, now.replace(hour=0, minute=0, second=0, microsecond=0)) + timedelta(days=1))
+    if has_custom_range:
+        limit_day = chart_end_date
+    else:
+        today_midnight = real_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        limit_day = min(chart_end_date, max(today_midnight, now.replace(hour=0, minute=0, second=0, microsecond=0)) + timedelta(days=1))
     
     while current_day < limit_day:
         day_str = current_day.strftime("%Y-%m-%d")
@@ -305,7 +519,12 @@ async def get_dashboard_metrics(
         "total_payables": float(total_payables),
         "total_expenses": float(total_expenses),
         "total_suppliers": total_suppliers,
+        "inventory_cost": float(inventory_cost),
+        "current_inventory_cost": float(current_inventory_cost),
         "inventory_value": float(inventory_value),
+        "potential_profit": float(max(0.0, inventory_value - current_inventory_cost)),
+        "is_date_filtered": bool(start_date_str),
+        "businesses_inventory": businesses_inventory,
         "low_stock": low_stock_products,
         "top_sold": top_sold,
         "least_sold": least_sold,

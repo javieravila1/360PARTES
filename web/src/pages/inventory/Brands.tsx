@@ -132,7 +132,7 @@ export default function Brands() {
             ) : brands.length === 0 ? (
               <tr><td colSpan={4} className="px-6 py-4 text-center text-slate-500 dark:text-slate-400">No hay marcas registradas</td></tr>
             ) : (
-              brands.map(brand => (
+              currentItems.map(brand => (
                 <tr key={brand.id} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/80 dark:hover:bg-slate-700/50 transition-colors">
                   <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100">{brand.name}</td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{brand.description || '-'}</td>

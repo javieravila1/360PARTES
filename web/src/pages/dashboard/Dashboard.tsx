@@ -2,27 +2,31 @@ import { useEffect, useState } from 'react';
 import { useBusinessStore } from '../../store/businessStore';
 import apiClient from '../../api/client';
 import { toast } from 'react-toastify';
-import { DollarSign, Package, CreditCard, TrendingUp, Activity, ShoppingBag, AlertTriangle, ArrowUpRight, Clock, Truck } from 'lucide-react';
+import { DollarSign, Package, CreditCard, TrendingUp, Activity, ShoppingBag, AlertTriangle, ArrowUpRight, Clock, Truck, Boxes, Store, Calendar, X, Coins, Sparkles } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 export default function Dashboard() {
   const currentBusiness = useBusinessStore((state) => state.currentBusiness);
+  const setCurrentBusiness = useBusinessStore((state) => state.setCurrentBusiness);
   const [metrics, setMetrics] = useState<any>({
-    total_sales: 0, total_products: 0, inventory_value: 0, total_payables: 0, total_expenses: 0, total_suppliers: 0,
-    low_stock: [], top_sold: [], least_sold: [], recent_activity: [], sales_chart: []
+    total_sales: 0, total_products: 0, inventory_cost: 0, inventory_value: 0, potential_profit: 0, total_payables: 0, total_expenses: 0, total_suppliers: 0,
+    businesses_inventory: [], low_stock: [], top_sold: [], least_sold: [], recent_activity: [], sales_chart: []
   });
   
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('today');
   const [chartTimeFilter, setChartTimeFilter] = useState('this_month');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
       try {
-        const dateParam = selectedDate ? `&date=${selectedDate}` : '';
-        const { data } = await apiClient.get(`/dashboard/?time_filter=${timeFilter}&chart_time_filter=${chartTimeFilter}${dateParam}`);
+        let params = `time_filter=${timeFilter}&chart_time_filter=${chartTimeFilter}`;
+        if (startDate) params += `&start_date=${startDate}`;
+        if (endDate) params += `&end_date=${endDate}`;
+        const { data } = await apiClient.get(`/dashboard/?${params}`);
         setMetrics(data);
       } catch (error) {
         toast.error('Error al cargar métricas del dashboard');
@@ -35,18 +39,45 @@ export default function Dashboard() {
     const handler = () => { if (currentBusiness) fetchMetrics(); };
     window.addEventListener('db_updated', handler);
     return () => window.removeEventListener('db_updated', handler);
-  }, [currentBusiness, timeFilter, chartTimeFilter, selectedDate]);
+  }, [currentBusiness, timeFilter, chartTimeFilter, startDate, endDate]);
 
-  const StatCard = ({ icon: Icon, title, value, textColor, glowColor }: any) => (
-    <div className="floating-card p-6 flex items-center justify-between group overflow-hidden relative">
+  const totalAllBusinessesCost = (metrics.businesses_inventory || []).reduce(
+    (acc: number, b: any) => acc + (Number(b.inventory_cost) || 0),
+    0
+  );
+
+  const totalAllBusinessesRetail = (metrics.businesses_inventory || []).reduce(
+    (acc: number, b: any) => acc + (Number(b.inventory_value) || 0),
+    0
+  );
+
+  const handleSwitchBusiness = (biz: any) => {
+    setCurrentBusiness({
+      id: biz.business_id,
+      name: biz.business_name,
+      currency: '$'
+    });
+    toast.info(`Cambiado a ${biz.business_name}`);
+  };
+
+  const StatCard = ({ icon: Icon, title, value, textColor, glowColor, subtitle, onClick }: any) => (
+    <div 
+      onClick={onClick}
+      className={`floating-card p-6 flex items-center justify-between group overflow-hidden relative transition-all duration-300 ${
+        onClick ? 'cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg' : ''
+      }`}
+    >
       {/* Decorative background glow */}
       <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-20 dark:opacity-30 transition-all group-hover:scale-150 ${glowColor}`}></div>
       
-      <div>
-        <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">{title}</h3>
-        <p className="text-3xl font-semibold text-slate-800 dark:text-white tracking-tight">{value}</p>
+      <div className="z-10 min-w-0 pr-2">
+        <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1 truncate">{title}</h3>
+        <p className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight truncate">{value}</p>
+        {subtitle && (
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-1 truncate">{subtitle}</p>
+        )}
       </div>
-      <div className={`p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm relative z-10 ${textColor}`}>
+      <div className={`p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm relative z-10 flex-shrink-0 ${textColor}`}>
         <Icon size={24} strokeWidth={2.5} />
       </div>
     </div>
@@ -69,32 +100,56 @@ export default function Dashboard() {
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center">
-            <input
-              id="dashboard-date-picker"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 px-3 py-2.5 rounded-xl shadow-sm outline-none text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:ring-2 focus:ring-indigo-500/20 dark:[color-scheme:dark]"
-            />
-            {selectedDate && (
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Selector de Rango de Fechas (Desde - Hasta) */}
+          <div className="flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 p-1.5 px-3 rounded-2xl shadow-sm">
+            <Calendar size={15} className="text-indigo-500 mr-1 flex-shrink-0" />
+            
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Desde</span>
+              <input
+                id="dashboard-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:ring-0 p-1 dark:[color-scheme:dark]"
+              />
+            </div>
+
+            <span className="text-slate-300 dark:text-slate-600 font-bold px-0.5">-</span>
+
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hasta</span>
+              <input
+                id="dashboard-end-date"
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:ring-0 p-1 dark:[color-scheme:dark]"
+              />
+            </div>
+
+            {(startDate || endDate) && (
               <button
                 id="dashboard-date-clear"
-                onClick={() => setSelectedDate('')}
-                className="ml-2 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition"
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                title="Limpiar rango de fechas"
+                className="ml-1 p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
               >
-                Limpiar
+                <X size={14} />
               </button>
             )}
           </div>
+
+          {/* Selector de periodo rápido */}
           <div className="relative">
-            <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
+            <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
             <select 
               value={timeFilter} 
               onChange={(e) => setTimeFilter(e.target.value)}
-              disabled={!!selectedDate}
-              className="disabled:opacity-50 appearance-none bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 pl-11 pr-10 py-2.5 rounded-xl shadow-sm outline-none text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all focus:ring-2 focus:ring-indigo-500/20"
+              disabled={!!(startDate || endDate)}
+              className="disabled:opacity-40 appearance-none bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 pl-11 pr-10 py-2.5 rounded-2xl shadow-sm outline-none text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="today">Hoy</option>
               <option value="this_week">Esta semana</option>
@@ -113,7 +168,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard 
               icon={TrendingUp} title="Ventas Totales" 
               value={`$${metrics.total_sales.toLocaleString()}`}
@@ -125,6 +180,32 @@ export default function Dashboard() {
               value={`$${(metrics.total_profit || 0).toLocaleString()}`}
               textColor="text-emerald-600 dark:text-emerald-400"
               glowColor="bg-emerald-500"
+            />
+            <StatCard 
+              icon={Boxes} title="Costo Total Inventario" 
+              value={`$${(metrics.inventory_cost ?? 0).toLocaleString()}`}
+              textColor="text-teal-600 dark:text-teal-400"
+              glowColor="bg-teal-500"
+              subtitle={
+                (startDate || endDate || (timeFilter && timeFilter !== 'all_time'))
+                  ? "Compras e ingresos en el periodo"
+                  : "Inversión total a precio de costo"
+              }
+              onClick={() => {
+                const el = document.getElementById('inventory-by-business-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            />
+            <StatCard 
+              icon={Coins} title="Valor Total Inventario" 
+              value={`$${(metrics.inventory_value || 0).toLocaleString()}`}
+              textColor="text-cyan-600 dark:text-cyan-400"
+              glowColor="bg-cyan-500"
+              subtitle={`Venta actual (Margen: +$${(metrics.potential_profit || 0).toLocaleString()})`}
+              onClick={() => {
+                const el = document.getElementById('inventory-by-business-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
             />
             <StatCard 
               icon={Package} title="Total Productos" 
@@ -150,6 +231,153 @@ export default function Dashboard() {
               textColor="text-blue-600 dark:text-blue-400"
               glowColor="bg-blue-500"
             />
+          </div>
+
+          {/* Card: Costo Total y Valor del Inventario para Cada Negocio */}
+          <div id="inventory-by-business-section" className="floating-card p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-sm">
+                  <Store size={22} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    Costo y Valor Total del Inventario por Negocio
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {(startDate || endDate || (timeFilter && timeFilter !== 'all_time'))
+                      ? 'Inversión en compras e ingresos del periodo filtrado vs valor comercial de venta del stock actual'
+                      : 'Comparativa de inversión al costo y valor comercial a precio de venta para cada sede'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {totalAllBusinessesCost >= 0 && (
+                  <div className="flex items-center gap-2 bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/50 px-3.5 py-2 rounded-2xl">
+                    <Boxes size={16} className="text-teal-600 dark:text-teal-400" />
+                    <div className="text-right">
+                      <span className="text-[10px] block font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
+                        {(startDate || endDate || (timeFilter && timeFilter !== 'all_time')) ? 'Costo Periodo Global' : 'Costo Global'}
+                      </span>
+                      <span className="text-sm font-extrabold text-teal-700 dark:text-teal-300">
+                        ${totalAllBusinessesCost.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {totalAllBusinessesRetail > 0 && (
+                  <div className="flex items-center gap-2 bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200/80 dark:border-cyan-800/50 px-3.5 py-2 rounded-2xl">
+                    <Coins size={16} className="text-cyan-600 dark:text-cyan-400" />
+                    <div className="text-right">
+                      <span className="text-[10px] block font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Valor Venta Global</span>
+                      <span className="text-sm font-extrabold text-cyan-700 dark:text-cyan-300">
+                        ${totalAllBusinessesRetail.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {(metrics.businesses_inventory && metrics.businesses_inventory.length > 0) ? (
+                metrics.businesses_inventory.map((biz: any) => {
+                  const isCurrent = biz.business_id === currentBusiness?.id;
+                  const pct = totalAllBusinessesCost > 0 
+                    ? Math.round((Number(biz.inventory_cost || 0) / totalAllBusinessesCost) * 100) 
+                    : 0;
+
+                  return (
+                    <div 
+                      key={biz.business_id}
+                      className={`p-5 rounded-2xl border transition-all relative overflow-hidden group ${
+                        isCurrent 
+                          ? 'bg-gradient-to-br from-teal-500/[0.07] to-cyan-500/[0.04] dark:from-teal-500/[0.12] dark:to-cyan-500/[0.06] border-teal-500/40 dark:border-teal-500/30 ring-2 ring-teal-500/20 shadow-sm' 
+                          : 'bg-slate-50/60 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isCurrent ? 'bg-teal-500 ring-4 ring-teal-500/20 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`} />
+                          <h4 className="font-bold text-slate-800 dark:text-white text-base truncate" title={biz.business_name}>
+                            {biz.business_name}
+                          </h4>
+                        </div>
+                        {isCurrent ? (
+                          <span className="flex-shrink-0 text-[10px] font-extrabold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            Actual
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleSwitchBusiness(biz)}
+                            className="flex-shrink-0 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 border border-indigo-200/60 dark:border-indigo-800/40 cursor-pointer"
+                          >
+                            Ver negocio <ArrowUpRight size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Costo vs Valor Comercial */}
+                      <div className="grid grid-cols-2 gap-3 my-3 p-3 bg-white/70 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                            {(startDate || endDate || (timeFilter && timeFilter !== 'all_time')) ? 'Costo en Periodo' : 'Costo (Inversión)'}
+                          </span>
+                          <p className="text-xl font-extrabold text-teal-700 dark:text-teal-300 tracking-tight mt-0.5">
+                            ${Number(biz.inventory_cost || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Valor Comercial</span>
+                          <p className="text-xl font-extrabold text-cyan-700 dark:text-cyan-300 tracking-tight mt-0.5">
+                            ${Number(biz.inventory_value || 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {biz.potential_profit > 0 && (
+                        <div className="flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">
+                          <span className="flex items-center gap-1">
+                            <Sparkles size={13} /> Margen proyectado:
+                          </span>
+                          <span>+${Number(biz.potential_profit).toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-2 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
+                          <span className="flex items-center gap-1.5">
+                            <Package size={14} className="text-slate-400" />
+                            {biz.total_products} productos en stock
+                          </span>
+                          <span className="text-teal-600 dark:text-teal-400 font-bold">{pct}% del total</span>
+                        </div>
+
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-700 ${isCurrent ? 'bg-gradient-to-r from-teal-500 to-cyan-500' : 'bg-slate-400 dark:bg-slate-500'}`}
+                            style={{ width: `${Math.max(pct, 2)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-5 rounded-2xl border bg-slate-50/60 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/60 col-span-full">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{currentBusiness?.name || 'Negocio Actual'}</span>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                        Costo: ${(metrics.inventory_cost ?? metrics.inventory_value ?? 0).toLocaleString()} | Valor Venta: ${(metrics.inventory_value || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">{metrics.total_products || 0} productos</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="floating-card p-6">
