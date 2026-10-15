@@ -257,14 +257,15 @@ class DashboardScreen extends ConsumerWidget {
     final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final currentBusiness = ref.watch(currentBusinessProvider);
     final currentBizId = currentBusiness?['id']?.toString();
-    final invCost = ((metrics['inventory_cost'] ?? metrics['inventory_value']) as num? ?? 0).toDouble();
+    final invCost = (metrics['inventory_cost'] as num? ?? 0).toDouble();
     final invRetail = (metrics['inventory_value'] as num? ?? 0).toDouble();
+    final potentialProfit = (metrics['potential_profit'] as num? ?? (invRetail > invCost ? invRetail - invCost : 0)).toDouble();
     final bizInvList = metrics['businesses_inventory'] as List<dynamic>? ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(22),
@@ -276,79 +277,177 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(PhosphorIconsRegular.archive, color: const Color(0xFF0D9488), size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Costo inventario',
-                            style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '\$${invCost.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(width: 1, height: 38, color: borderColor),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(PhosphorIconsRegular.coin, color: const Color(0xFF0284C7), size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Valor venta actual',
-                            style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '\$${invRetail.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0284C7),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
+                const Icon(PhosphorIconsRegular.storefront, color: Color(0xFF0D9488), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Inventario actual disponible',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+
+            // Dos cards separadas con espacio elegante y tipografía equilibrada (no negrillas gigantes)
+            Row(
+              children: [
+                // Card Costo
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Costo stock',
+                              style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              'costo×cant',
+                              style: TextStyle(color: muted.withValues(alpha: 0.7), fontSize: 9),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '\$${invCost.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Card Valor Comercial
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withValues(alpha: isDark ? 0.1 : 0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Valor venta',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'pvp×cant',
+                              style: TextStyle(
+                                color: (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7)).withValues(alpha: 0.7),
+                                fontSize: 9,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '\$${invRetail.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            if (potentialProfit > 0) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: isDark ? 0.12 : 0.07),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(PhosphorIconsRegular.sparkle, size: 13, color: Color(0xFF059669)),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Margen proyectado:',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFF34D399) : const Color(0xFF065F46),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '+\$${potentialProfit.toStringAsFixed(0)} ${invRetail > 0 ? "(${((potentialProfit / invRetail) * 100).round()}%)" : ""}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF065F46),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             if (bizInvList.length > 1) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Divider(color: borderColor, height: 1),
               ),
-              Text(
-                'Inventario por negocio',
-                style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Inventario por sede',
+                    style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Costo vs Venta',
+                    style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               ...bizInvList.map((biz) {
                 final bId = biz['business_id']?.toString();
                 final isCur = bId == currentBizId || biz['is_current'] == true;
                 final bCost = (biz['inventory_cost'] as num? ?? 0).toDouble();
+                final bVal = (biz['inventory_value'] as num? ?? 0).toDouble();
                 final bProds = (biz['total_products'] as num? ?? 0).toInt();
+                final bStock = (biz['total_stock'] as num? ?? bProds).toInt();
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
@@ -366,11 +465,11 @@ class DashboardScreen extends ConsumerWidget {
                   },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: isCur
-                          ? const Color(0xFF0D9488).withValues(alpha: isDark ? 0.15 : 0.08)
-                          : (isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC)),
+                          ? const Color(0xFF0D9488).withValues(alpha: isDark ? 0.12 : 0.06)
+                          : (isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : const Color(0xFFF8FAFC)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isCur ? const Color(0xFF0D9488).withValues(alpha: 0.3) : borderColor,
@@ -389,7 +488,7 @@ class DashboardScreen extends ConsumerWidget {
                                       biz['business_name'] ?? 'Negocio',
                                       style: TextStyle(
                                         fontWeight: isCur ? FontWeight.w700 : FontWeight.w600,
-                                        fontSize: 14,
+                                        fontSize: 13,
                                         color: isDark ? Colors.white : const Color(0xFF1E293B),
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -398,14 +497,14 @@ class DashboardScreen extends ConsumerWidget {
                                   if (isCur) ...[
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFF0D9488).withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Text(
                                         'Actual',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF0D9488)),
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF0D9488)),
                                       ),
                                     ),
                                   ],
@@ -413,19 +512,33 @@ class DashboardScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '$bProds productos',
+                                '$bProds ref. · $bStock und. en stock',
                                 style: TextStyle(color: muted, fontSize: 11),
                               ),
                             ],
                           ),
                         ),
-                        Text(
-                          '\$${bCost.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: isCur ? const Color(0xFF0D9488) : (isDark ? Colors.white70 : Colors.black87),
-                          ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'C: \$${bCost.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : const Color(0xFF334155),
+                              ),
+                            ),
+                            Text(
+                              'V: \$${bVal.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0284C7),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

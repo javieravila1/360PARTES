@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import apiClient from '../../api/client';
-import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, Search, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useBusinessStore } from '../../store/businessStore';
 import { ExcelActions } from '../../components/ExcelActions';
@@ -14,6 +14,8 @@ interface Product {
   selling_price: number;
   current_stock: number;
   min_stock: number;
+  brand_id?: string;
+  category_id?: string;
   image?: string;
   image_url?: string;
 }
@@ -28,14 +30,37 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterBrandId, setFilterBrandId] = useState('');
+  const [filterCategoryId, setFilterCategoryId] = useState('');
 
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const brandsMap = useMemo(() => new Map(brands.map(b => [b.id, b.name])), [brands]);
+  const categoriesMap = useMemo(() => new Map(categories.map(c => [c.id, c.name])), [categories]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch = !term || 
+        p.name.toLowerCase().includes(term) || 
+        (p.sku && p.sku.toLowerCase().includes(term));
+      const matchesBrand = filterBrandId ? p.brand_id === filterBrandId : true;
+      const matchesCategory = filterCategoryId ? p.category_id === filterCategoryId : true;
+      return matchesSearch && matchesBrand && matchesCategory;
+    });
+  }, [products, searchTerm, filterBrandId, filterCategoryId]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterBrandId, filterCategoryId]);
 
   const [showModal, setShowModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
@@ -174,7 +199,7 @@ export default function Products() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-white">Inventario de Productos</h1>
         <div className="flex gap-2">
-          <ExcelActions data={products} filename="Productos" />
+          <ExcelActions data={filteredProducts} filename="Productos" />
           <button
             className="btn-primary"
             onClick={() => {
@@ -188,6 +213,62 @@ export default function Products() {
         </div>
       </div>
 
+      {/* Barra de Filtros y Búsqueda */}
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex-1 relative">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o SKU..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-[170px]">
+            <select
+              value={filterBrandId}
+              onChange={e => setFilterBrandId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="">Todas las marcas ({brands.length})</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[170px]">
+            <select
+              value={filterCategoryId}
+              onChange={e => setFilterCategoryId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="">Todas las categorías ({categories.length})</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {(searchTerm || filterBrandId || filterCategoryId) && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFilterBrandId('');
+                setFilterCategoryId('');
+              }}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200/60 dark:border-rose-800/40 transition-colors cursor-pointer"
+              title="Limpiar filtros"
+            >
+              <X size={14} /> Limpiar
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 transition-colors">
@@ -195,6 +276,8 @@ export default function Products() {
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Imagen</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">SKU</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Nombre</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Marca</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Categoría</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Precio Sugerido</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Stock</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300 text-right">Acciones</th>
@@ -202,9 +285,9 @@ export default function Products() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-6 py-4 text-center">Cargando...</td></tr>
-            ) : products.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-4 text-center text-slate-500">No hay productos registrados</td></tr>
+              <tr><td colSpan={8} className="px-6 py-4 text-center">Cargando...</td></tr>
+            ) : filteredProducts.length === 0 ? (
+              <tr><td colSpan={8} className="px-6 py-4 text-center text-slate-500">No se encontraron productos con los filtros aplicados</td></tr>
             ) : (
               currentItems.map(p => (
                 <tr key={p.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
@@ -212,16 +295,34 @@ export default function Products() {
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                      <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400">
                         <ImageIcon size={20} />
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{p.sku}</td>
-                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100 dark:text-slate-200">{p.name}</td>
-                  <td className="px-6 py-4 text-slate-800 dark:text-slate-100 dark:text-slate-200 font-bold">${Number(p.selling_price).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 font-mono">{p.sku || '-'}</td>
+                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100">{p.name}</td>
+                  <td className="px-6 py-4 text-sm">
+                    {p.brand_id && brandsMap.has(p.brand_id) ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
+                        {brandsMap.get(p.brand_id)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    {p.category_id && categoriesMap.has(p.category_id) ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40">
+                        {categoriesMap.get(p.category_id)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-slate-800 dark:text-slate-100 font-bold">${Number(p.selling_price).toLocaleString()}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${p.current_stock <= p.min_stock ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${p.current_stock <= p.min_stock ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'}`}>
                       {Number(p.current_stock || 0)}
                     </span>
                   </td>
@@ -252,7 +353,7 @@ export default function Products() {
 
       {totalPages > 1 && (
         <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 rounded-b-xl">
-          <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, products.length)} de {products.length}</span>
+          <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProducts.length)} de {filteredProducts.length}</span>
           <div className="flex space-x-2">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}

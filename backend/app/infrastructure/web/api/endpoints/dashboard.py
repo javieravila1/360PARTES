@@ -22,153 +22,27 @@ router = APIRouter()
 
 
 async def _calculate_business_inventory_cost(db: AsyncSession, biz_id: uuid.UUID) -> float:
-    # 1. Sumar lotes con stock positivo
-    stmt_batches = select(
-        func.sum(func.coalesce(ProductBatch.cost_price, 0) * func.coalesce(ProductBatch.current_stock, 0))
-    ).where(
-        ProductBatch.business_id == biz_id,
-        ProductBatch.current_stock > 0
-    )
-    res_batches = await db.execute(stmt_batches)
-    batches_val = res_batches.scalar() or 0.0
-
-    # 2. Sumar productos con stock positivo que no tengan lotes
-    stmt_no_batches = select(
+    # Costo total = costo * cantidad de productos disponibles en el stock actual
+    stmt = select(
         func.sum(func.coalesce(Product.cost_price, 0) * func.coalesce(Product.current_stock, 0))
     ).where(
         Product.business_id == biz_id,
-        Product.current_stock > 0,
-        ~Product.id.in_(select(ProductBatch.product_id).where(ProductBatch.business_id == biz_id))
+        Product.current_stock > 0
     )
-    res_no_batches = await db.execute(stmt_no_batches)
-    no_batches_val = res_no_batches.scalar() or 0.0
-
-    total_val = float(batches_val) + float(no_batches_val)
-    if total_val == 0.0:
-        # Fallback a productos directos por si no se crearon lotes
-        stmt_fallback = select(
-            func.sum(func.coalesce(Product.cost_price, 0) * func.coalesce(Product.current_stock, 0))
-        ).where(
-            Product.business_id == biz_id,
-            Product.current_stock > 0
-        )
-        res_fb = await db.execute(stmt_fallback)
-        total_val = float(res_fb.scalar() or 0.0)
-    return total_val
+    res = await db.execute(stmt)
+    return float(res.scalar() or 0.0)
 
 async def _calculate_business_inventory_retail_value(db: AsyncSession, biz_id: uuid.UUID) -> float:
-    # 1. Sumar lotes con stock positivo valorados al precio de venta
-    stmt_batches = select(
-        func.sum(func.coalesce(ProductBatch.selling_price, Product.selling_price, 0) * func.coalesce(ProductBatch.current_stock, 0))
-    ).select_from(ProductBatch).outerjoin(
-        Product, ProductBatch.product_id == Product.id
-    ).where(
-        ProductBatch.business_id == biz_id,
-        ProductBatch.current_stock > 0
-    )
-    res_batches = await db.execute(stmt_batches)
-    batches_val = res_batches.scalar() or 0.0
-
-    # 2. Sumar productos con stock positivo que no tengan lotes valorados al precio de venta
-    stmt_no_batches = select(
+    # Valor venta total = precio sugerido de venta * cantidad de productos disponibles en el stock actual
+    stmt = select(
         func.sum(func.coalesce(Product.selling_price, 0) * func.coalesce(Product.current_stock, 0))
     ).where(
         Product.business_id == biz_id,
-        Product.current_stock > 0,
-        ~Product.id.in_(select(ProductBatch.product_id).where(ProductBatch.business_id == biz_id))
+        Product.current_stock > 0
     )
-    res_no_batches = await db.execute(stmt_no_batches)
-    no_batches_val = res_no_batches.scalar() or 0.0
+    res = await db.execute(stmt)
+    return float(res.scalar() or 0.0)
 
-    total_val = float(batches_val) + float(no_batches_val)
-    if total_val == 0.0:
-        # Fallback a productos directos
-        stmt_fallback = select(
-            func.sum(func.coalesce(Product.selling_price, 0) * func.coalesce(Product.current_stock, 0))
-        ).where(
-            Product.business_id == biz_id,
-            Product.current_stock > 0
-        )
-        res_fb = await db.execute(stmt_fallback)
-        total_val = float(res_fb.scalar() or 0.0)
-    return total_val
-
-async def _calculate_business_period_inventory_cost(
-    db: AsyncSession, 
-    biz_id: uuid.UUID, 
-    start_date_str: str | None = None, 
-    end_date_str: str | None = None
-) -> float:
-    # Si no hay filtro de fechas, retornar el costo del stock actual en almacén
-    if not start_date_str:
-        return await _calculate_business_inventory_cost(db, biz_id)
-
-    # 1. Compras registradas en el periodo (tabla purchases)
-    eff_purch_date = func.substr(func.coalesce(cast(Purchase.purchase_date, String), cast(Purchase.created_at, String)), 1, 10)
-    cond_purchases = [
-        Purchase.business_id == biz_id,
-        eff_purch_date >= start_date_str
-    ]
-    if end_date_str:
-        cond_purchases.append(eff_purch_date < end_date_str)
-
-    stmt_purchases = select(func.sum(func.coalesce(Purchase.total, 0))).where(*cond_purchases)
-    res_purchases = await db.execute(stmt_purchases)
-    purchases_total = float(res_purchases.scalar() or 0.0)
-
-    # 2. Entradas directas de inventario en el periodo (evitar duplicar compras ya sumadas)
-    subq_purch_ids = select(cast(Purchase.id, String)).where(Purchase.business_id == biz_id)
-    eff_mov_date = func.substr(cast(InventoryMovement.created_at, String), 1, 10)
-    
-    cond_movements = [
-        InventoryMovement.business_id == biz_id,
-        InventoryMovement.movement_type.in_(["ENTRADA_COMPRA", "ENTRADA_AJUSTE", "STOCK_INICIAL"]),
-        eff_mov_date >= start_date_str,
-        or_(
-            InventoryMovement.reference_id.is_(None),
-            ~InventoryMovement.reference_id.in_(subq_purch_ids)
-        )
-    ]
-    if end_date_str:
-        cond_movements.append(eff_mov_date < end_date_str)
-
-    stmt_movements = (
-        select(
-            func.sum(
-                func.coalesce(InventoryMovement.quantity, 0) * func.coalesce(Product.cost_price, 0)
-            )
-        )
-        .select_from(InventoryMovement)
-        .join(Product, InventoryMovement.product_id == Product.id)
-        .where(*cond_movements)
-    )
-    res_movements = await db.execute(stmt_movements)
-    movements_total = float(res_movements.scalar() or 0.0)
-
-    # 3. Productos creados en el periodo con stock inicial que no tengan movimiento
-    eff_prod_date = func.substr(cast(Product.created_at, String), 1, 10)
-    subq_mov_prod_ids = select(InventoryMovement.product_id).where(
-        InventoryMovement.business_id == biz_id,
-        InventoryMovement.movement_type.in_(["ENTRADA_COMPRA", "ENTRADA_AJUSTE", "STOCK_INICIAL"])
-    )
-    cond_direct_prods = [
-        Product.business_id == biz_id,
-        Product.current_stock > 0,
-        eff_prod_date >= start_date_str,
-        ~Product.id.in_(subq_mov_prod_ids)
-    ]
-    if end_date_str:
-        cond_direct_prods.append(eff_prod_date < end_date_str)
-
-    stmt_direct_prods = select(
-        func.sum(
-            func.coalesce(Product.current_stock, 0) * func.coalesce(Product.cost_price, 0)
-        )
-    ).where(*cond_direct_prods)
-    res_direct_prods = await db.execute(stmt_direct_prods)
-    direct_prods_total = float(res_direct_prods.scalar() or 0.0)
-
-    return float(round(purchases_total + movements_total + direct_prods_total, 2))
 
 @router.get("/")
 async def get_dashboard_metrics(
@@ -350,14 +224,12 @@ async def get_dashboard_metrics(
     result_suppliers = await db.execute(stmt_suppliers)
     total_suppliers = result_suppliers.scalar() or 0
 
-    # Valor y Costo Inventario Negocio Actual
-    # Si se aplicó filtro de fechas, 'inventory_cost' refleja el costo de compras e ingresos del periodo.
-    # Si no, refleja la valuación total al costo de todo el stock actual.
-    inventory_cost = await _calculate_business_period_inventory_cost(db, business_id, start_date_str, end_date_str)
-    current_inventory_cost = await _calculate_business_inventory_cost(db, business_id)
+    # Valor y Costo Inventario Negocio Actual (Siempre sobre el stock actual disponible)
+    inventory_cost = await _calculate_business_inventory_cost(db, business_id)
+    current_inventory_cost = inventory_cost
     inventory_value = await _calculate_business_inventory_retail_value(db, business_id)
 
-    # Costo Total de Inventario y Valor Comercial para cada negocio del usuario
+    # Costo Total de Inventario y Valor Comercial para cada negocio del usuario (Stock actual disponible)
     stmt_user_businesses = (
         select(Business)
         .join(BusinessUser, Business.id == BusinessUser.business_id)
@@ -368,21 +240,26 @@ async def get_dashboard_metrics(
 
     businesses_inventory = []
     for b in user_businesses:
-        b_cost = await _calculate_business_period_inventory_cost(db, b.id, start_date_str, end_date_str)
-        b_curr_cost = await _calculate_business_inventory_cost(db, b.id)
+        b_cost = await _calculate_business_inventory_cost(db, b.id)
         b_val = await _calculate_business_inventory_retail_value(db, b.id)
-        stmt_b_prods = select(func.count(Product.id)).where(Product.business_id == b.id)
-        res_b_prods = await db.execute(stmt_b_prods)
-        b_prods_count = res_b_prods.scalar() or 0
+        
+        stmt_b_stock = select(
+            func.count(Product.id),
+            func.sum(Product.current_stock)
+        ).where(Product.business_id == b.id, Product.current_stock > 0)
+        res_b_stock = (await db.execute(stmt_b_stock)).first()
+        b_prods_count = int(res_b_stock[0] or 0) if res_b_stock else 0
+        b_total_units = int(res_b_stock[1] or 0) if res_b_stock else 0
 
         businesses_inventory.append({
             "business_id": str(b.id),
             "business_name": b.name,
             "inventory_cost": b_cost,
-            "current_inventory_cost": b_curr_cost,
+            "current_inventory_cost": b_cost,
             "inventory_value": b_val,
-            "potential_profit": max(0.0, b_val - b_curr_cost),
+            "potential_profit": max(0.0, b_val - b_cost),
             "total_products": b_prods_count,
+            "total_stock": b_total_units,
             "is_current": b.id == business_id
         })
 

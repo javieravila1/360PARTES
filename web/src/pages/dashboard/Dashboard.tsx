@@ -71,10 +71,10 @@ export default function Dashboard() {
       <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-20 dark:opacity-30 transition-all group-hover:scale-150 ${glowColor}`}></div>
       
       <div className="z-10 min-w-0 pr-2">
-        <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1 truncate">{title}</h3>
-        <p className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight truncate">{value}</p>
+        <h3 className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1 truncate">{title}</h3>
+        <p className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight truncate">{value}</p>
         {subtitle && (
-          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-1 truncate">{subtitle}</p>
+          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1 truncate">{subtitle}</p>
         )}
       </div>
       <div className={`p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm relative z-10 flex-shrink-0 ${textColor}`}>
@@ -186,11 +186,7 @@ export default function Dashboard() {
               value={`$${(metrics.inventory_cost ?? 0).toLocaleString()}`}
               textColor="text-teal-600 dark:text-teal-400"
               glowColor="bg-teal-500"
-              subtitle={
-                (startDate || endDate || (timeFilter && timeFilter !== 'all_time'))
-                  ? "Compras e ingresos en el periodo"
-                  : "Inversión total a precio de costo"
-              }
+              subtitle="Inversión en stock actual disponible"
               onClick={() => {
                 const el = document.getElementById('inventory-by-business-section');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -201,7 +197,7 @@ export default function Dashboard() {
               value={`$${(metrics.inventory_value || 0).toLocaleString()}`}
               textColor="text-cyan-600 dark:text-cyan-400"
               glowColor="bg-cyan-500"
-              subtitle={`Venta actual (Margen: +$${(metrics.potential_profit || 0).toLocaleString()})`}
+              subtitle={`Valor comercial (Margen: +$${(metrics.potential_profit || 0).toLocaleString()})`}
               onClick={() => {
                 const el = document.getElementById('inventory-by-business-section');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -238,40 +234,40 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-sm">
-                  <Store size={22} strokeWidth={2.5} />
+                  <Store size={22} strokeWidth={2} />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     Costo y Valor Total del Inventario por Negocio
                   </h3>
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {(startDate || endDate || (timeFilter && timeFilter !== 'all_time'))
-                      ? 'Inversión en compras e ingresos del periodo filtrado vs valor comercial de venta del stock actual'
-                      : 'Comparativa de inversión al costo y valor comercial a precio de venta para cada sede'}
+                    Inversión a precio de costo vs valor comercial del stock actual disponible en cada sede
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 {totalAllBusinessesCost >= 0 && (
-                  <div className="flex items-center gap-2 bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/50 px-3.5 py-2 rounded-2xl">
-                    <Boxes size={16} className="text-teal-600 dark:text-teal-400" />
+                  <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2 rounded-xl">
+                    <Boxes size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
                     <div className="text-right">
-                      <span className="text-[10px] block font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
-                        {(startDate || endDate || (timeFilter && timeFilter !== 'all_time')) ? 'Costo Periodo Global' : 'Costo Global'}
+                      <span className="text-[10px] block font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Costo Global Stock
                       </span>
-                      <span className="text-sm font-extrabold text-teal-700 dark:text-teal-300">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                         ${totalAllBusinessesCost.toLocaleString()}
                       </span>
                     </div>
                   </div>
                 )}
                 {totalAllBusinessesRetail > 0 && (
-                  <div className="flex items-center gap-2 bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200/80 dark:border-cyan-800/50 px-3.5 py-2 rounded-2xl">
-                    <Coins size={16} className="text-cyan-600 dark:text-cyan-400" />
+                  <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 px-3.5 py-2 rounded-xl">
+                    <Coins size={16} className="text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
                     <div className="text-right">
-                      <span className="text-[10px] block font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Valor Venta Global</span>
-                      <span className="text-sm font-extrabold text-cyan-700 dark:text-cyan-300">
+                      <span className="text-[10px] block font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Valor Venta Global
+                      </span>
+                      <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-300">
                         ${totalAllBusinessesRetail.toLocaleString()}
                       </span>
                     </div>
@@ -293,70 +289,85 @@ export default function Dashboard() {
                       key={biz.business_id}
                       className={`p-5 rounded-2xl border transition-all relative overflow-hidden group ${
                         isCurrent 
-                          ? 'bg-gradient-to-br from-teal-500/[0.07] to-cyan-500/[0.04] dark:from-teal-500/[0.12] dark:to-cyan-500/[0.06] border-teal-500/40 dark:border-teal-500/30 ring-2 ring-teal-500/20 shadow-sm' 
-                          : 'bg-slate-50/60 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
+                          ? 'bg-gradient-to-br from-teal-500/[0.05] to-cyan-500/[0.03] dark:from-teal-500/[0.1] dark:to-cyan-500/[0.05] border-teal-500/40 dark:border-teal-500/30 ring-1 ring-teal-500/20 shadow-sm' 
+                          : 'bg-white/80 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isCurrent ? 'bg-teal-500 ring-4 ring-teal-500/20 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`} />
-                          <h4 className="font-bold text-slate-800 dark:text-white text-base truncate" title={biz.business_name}>
+                          <h4 className="font-semibold text-slate-800 dark:text-white text-base truncate" title={biz.business_name}>
                             {biz.business_name}
                           </h4>
                         </div>
                         {isCurrent ? (
-                          <span className="flex-shrink-0 text-[10px] font-extrabold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          <span className="flex-shrink-0 text-[10px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
                             Actual
                           </span>
                         ) : (
                           <button
                             onClick={() => handleSwitchBusiness(biz)}
-                            className="flex-shrink-0 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 border border-indigo-200/60 dark:border-indigo-800/40 cursor-pointer"
+                            className="flex-shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 border border-indigo-200/60 dark:border-indigo-800/40 cursor-pointer"
                           >
                             Ver negocio <ArrowUpRight size={13} />
                           </button>
                         )}
                       </div>
 
-                      {/* Costo vs Valor Comercial */}
-                      <div className="grid grid-cols-2 gap-3 my-3 p-3 bg-white/70 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                            {(startDate || endDate || (timeFilter && timeFilter !== 'all_time')) ? 'Costo en Periodo' : 'Costo (Inversión)'}
-                          </span>
-                          <p className="text-xl font-extrabold text-teal-700 dark:text-teal-300 tracking-tight mt-0.5">
+                      {/* Espacio entre las cards de costo y valor comercial con diseño profesional y tipografía equilibrada */}
+                      <div className="grid grid-cols-2 gap-3.5 my-3.5">
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/70 dark:border-slate-800/80 flex flex-col justify-between">
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              Costo Stock
+                            </span>
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                              costo×stock
+                            </span>
+                          </div>
+                          <p className="text-lg font-semibold text-slate-800 dark:text-slate-100 tracking-tight">
                             ${Number(biz.inventory_cost || 0).toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Valor Comercial</span>
-                          <p className="text-xl font-extrabold text-cyan-700 dark:text-cyan-300 tracking-tight mt-0.5">
+
+                        <div className="p-3 rounded-xl bg-cyan-50/40 dark:bg-cyan-950/20 border border-cyan-100/80 dark:border-cyan-900/40 flex flex-col justify-between">
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-700/80 dark:text-cyan-300/80">
+                              Valor Venta
+                            </span>
+                            <span className="text-[9px] text-cyan-600/70 dark:text-cyan-400/70">
+                              pvp×stock
+                            </span>
+                          </div>
+                          <p className="text-lg font-semibold text-cyan-700 dark:text-cyan-300 tracking-tight">
                             ${Number(biz.inventory_value || 0).toLocaleString()}
                           </p>
                         </div>
                       </div>
 
                       {biz.potential_profit > 0 && (
-                        <div className="flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">
-                          <span className="flex items-center gap-1">
-                            <Sparkles size={13} /> Margen proyectado:
+                        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-100/80 dark:border-emerald-900/30 text-xs mb-3">
+                          <span className="text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1.5">
+                            <Sparkles size={12} className="text-emerald-500" /> Margen proyectado:
                           </span>
-                          <span>+${Number(biz.potential_profit).toLocaleString()}</span>
+                          <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                            +${Number(biz.potential_profit).toLocaleString()} {biz.inventory_value > 0 ? `(${Math.round((biz.potential_profit / biz.inventory_value) * 100)}%)` : ''}
+                          </span>
                         </div>
                       )}
 
-                      <div className="space-y-2 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
-                          <span className="flex items-center gap-1.5">
-                            <Package size={14} className="text-slate-400" />
-                            {biz.total_products} productos en stock
+                      <div className="space-y-2 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <Package size={13} className="text-slate-400" />
+                            {biz.total_products || 0} ref. {biz.total_stock !== undefined ? `· ${biz.total_stock} und.` : ''} en stock
                           </span>
-                          <span className="text-teal-600 dark:text-teal-400 font-bold">{pct}% del total</span>
+                          <span className="text-teal-600 dark:text-teal-400 font-medium">{pct}% del total</span>
                         </div>
 
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-200/70 dark:bg-slate-700/60 h-1.5 rounded-full overflow-hidden">
                           <div 
-                            className={`h-full rounded-full transition-all duration-700 ${isCurrent ? 'bg-gradient-to-r from-teal-500 to-cyan-500' : 'bg-slate-400 dark:bg-slate-500'}`}
+                            className={`h-full rounded-full transition-all duration-500 ${isCurrent ? 'bg-gradient-to-r from-teal-500 to-cyan-500' : 'bg-slate-400 dark:bg-slate-500'}`}
                             style={{ width: `${Math.max(pct, 2)}%` }}
                           />
                         </div>
@@ -368,9 +379,9 @@ export default function Dashboard() {
                 <div className="p-5 rounded-2xl border bg-slate-50/60 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/60 col-span-full">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{currentBusiness?.name || 'Negocio Actual'}</span>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                        Costo: ${(metrics.inventory_cost ?? metrics.inventory_value ?? 0).toLocaleString()} | Valor Venta: ${(metrics.inventory_value || 0).toLocaleString()}
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{currentBusiness?.name || 'Negocio Actual'}</span>
+                      <p className="text-xl font-semibold text-slate-900 dark:text-white mt-1">
+                        Costo: ${(metrics.inventory_cost ?? 0).toLocaleString()} | Valor Venta: ${(metrics.inventory_value || 0).toLocaleString()}
                       </p>
                       <p className="text-xs text-slate-500 mt-1">{metrics.total_products || 0} productos</p>
                     </div>
