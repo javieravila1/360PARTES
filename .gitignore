@@ -29,3 +29,5 @@ Thumbs.db
 # AWS
 backend/aws-credentials.ps1
 *.pem
+
+backend/*.dump
