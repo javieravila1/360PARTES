@@ -393,7 +393,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 child: Text('Error: $error', style: const TextStyle(color: Colors.red)),
               ),
               data: (products) {
-                // Filtrado local
+                // Filtrado local y orden alfabético
                 final filteredProducts = products.where((p) {
                   final name = (p['name'] ?? '').toString().toLowerCase();
                   final sku = (p['sku'] ?? '').toString().toLowerCase();
@@ -403,7 +403,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   final matchBrand = _filterBrandId == null || p['brand_id']?.toString() == _filterBrandId;
                   
                   return matchQuery && matchCat && matchBrand;
-                }).toList();
+                }).toList()..sort((a, b) => (a['name'] ?? '').toString().toLowerCase().compareTo((b['name'] ?? '').toString().toLowerCase()));
 
                 if (filteredProducts.isEmpty) {
                   return Center(

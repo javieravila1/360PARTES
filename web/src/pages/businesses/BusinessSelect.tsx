@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useBusinessStore } from '../../store/businessStore';
-import { Store, Plus, Edit2, Trash2, LogOut } from 'lucide-react';
+import { Store, Plus, Edit2, Trash2, LogOut, BarChart3 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuthStore } from '../../store/authStore';
+import ConsolidatedReportModal from '../../components/ConsolidatedReportModal';
 
 interface Business {
   id: string;
@@ -29,6 +30,7 @@ export default function BusinessSelect() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState<Business | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const fetchBusinesses = async () => {
     try {
@@ -82,17 +84,26 @@ export default function BusinessSelect() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-8 transition-colors">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Mis Negocios</h1>
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-1">Mis Negocios</h1>
             <p className="text-slate-600 dark:text-slate-300">¿Qué negocio quieres administrar?</p>
           </div>
-          <button 
-            onClick={() => logout().then(() => navigate('/login'))}
-            className="flex items-center text-slate-500 hover:text-red-600 dark:hover:text-red-400 font-semibold px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm transition"
-          >
-            <LogOut size={18} className="mr-2" /> Salir al Login
-          </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button 
+              onClick={() => setShowReportModal(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 font-semibold px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 shadow-sm transition cursor-pointer"
+              title="Ver informe general de todos los negocios con ganancias, ventas, gastos y exportación"
+            >
+              <BarChart3 size={18} className="mr-2" /> Informe General
+            </button>
+            <button 
+              onClick={() => logout().then(() => navigate('/login'))}
+              className="flex-1 sm:flex-none flex items-center justify-center text-slate-500 hover:text-red-600 dark:hover:text-red-400 font-semibold px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm transition"
+            >
+              <LogOut size={18} className="mr-2" /> Salir al Login
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -192,6 +203,17 @@ export default function BusinessSelect() {
           </div>
         </div>
       )}
+
+      <ConsolidatedReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSelectBusiness={(businessId) => {
+          const match = businesses.find(b => b.business.id === businessId);
+          if (match) {
+            handleSelect(match.business);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ export default function Dashboard() {
   const currentBusiness = useBusinessStore((state) => state.currentBusiness);
   const setCurrentBusiness = useBusinessStore((state) => state.setCurrentBusiness);
   const [metrics, setMetrics] = useState<any>({
-    total_sales: 0, total_products: 0, inventory_cost: 0, inventory_value: 0, potential_profit: 0, total_payables: 0, total_expenses: 0, total_suppliers: 0,
+    total_sales: 0, total_products: 0, inventory_cost: 0, inventory_value: 0, potential_profit: 0, total_payables: 0, total_expenses: 0, total_suppliers: 0, profit_after_expenses: 0,
     businesses_inventory: [], low_stock: [], top_sold: [], least_sold: [], recent_activity: [], sales_chart: []
   });
   
@@ -71,7 +71,7 @@ export default function Dashboard() {
       <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-20 dark:opacity-30 transition-all group-hover:scale-150 ${glowColor}`}></div>
       
       <div className="z-10 min-w-0 pr-2">
-        <h3 className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1 truncate">{title}</h3>
+        <h3 className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1 truncate" title={title}>{title}</h3>
         <p className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight truncate">{value}</p>
         {subtitle && (
           <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1 truncate">{subtitle}</p>
@@ -82,6 +82,14 @@ export default function Dashboard() {
       </div>
     </div>
   );
+
+  const profitAfterExpenses = metrics.profit_after_expenses !== undefined
+    ? Number(metrics.profit_after_expenses)
+    : (Number(metrics.total_sales) || 0) - (Number(metrics.total_expenses) || 0);
+
+  const formattedProfitAfterExpenses = profitAfterExpenses < 0
+    ? `-$${Math.abs(profitAfterExpenses).toLocaleString()}`
+    : `$${profitAfterExpenses.toLocaleString()}`;
 
   return (
     <div className="font-sans">
@@ -168,12 +176,25 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <StatCard 
               icon={TrendingUp} title="Ventas Totales" 
               value={`$${metrics.total_sales.toLocaleString()}`}
               textColor="text-indigo-600 dark:text-indigo-400"
               glowColor="bg-indigo-500"
+            />
+            <StatCard 
+              icon={DollarSign} title="Gastos Totales" 
+              value={`$${(metrics.total_expenses || 0).toLocaleString()}`}
+              textColor="text-amber-600 dark:text-amber-400"
+              glowColor="bg-amber-500"
+            />
+            <StatCard 
+              icon={Sparkles} title="Ganancias Después de gastos" 
+              value={formattedProfitAfterExpenses}
+              textColor={profitAfterExpenses >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}
+              glowColor={profitAfterExpenses >= 0 ? "bg-emerald-500" : "bg-rose-500"}
+              subtitle="Ventas Totales - Gastos Totales"
             />
             <StatCard 
               icon={DollarSign} title="Ganancia" 
@@ -204,22 +225,16 @@ export default function Dashboard() {
               }}
             />
             <StatCard 
-              icon={Package} title="Total Productos" 
-              value={metrics.total_products}
-              textColor="text-purple-600 dark:text-purple-400"
-              glowColor="bg-purple-500"
-            />
-            <StatCard 
               icon={CreditCard} title="Cuentas por Pagar" 
               value={`$${metrics.total_payables.toLocaleString()}`}
               textColor="text-rose-600 dark:text-rose-400"
               glowColor="bg-rose-500"
             />
             <StatCard 
-              icon={DollarSign} title="Gastos Totales" 
-              value={`$${(metrics.total_expenses || 0).toLocaleString()}`}
-              textColor="text-amber-600 dark:text-amber-400"
-              glowColor="bg-amber-500"
+              icon={Package} title="Total Productos" 
+              value={metrics.total_products}
+              textColor="text-purple-600 dark:text-purple-400"
+              glowColor="bg-purple-500"
             />
             <StatCard 
               icon={Truck} title="Proveedores" 

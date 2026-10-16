@@ -42,15 +42,17 @@ export default function Products() {
   const categoriesMap = useMemo(() => new Map(categories.map(c => [c.id, c.name])), [categories]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const term = searchTerm.trim().toLowerCase();
-      const matchesSearch = !term || 
-        p.name.toLowerCase().includes(term) || 
-        (p.sku && p.sku.toLowerCase().includes(term));
-      const matchesBrand = filterBrandId ? p.brand_id === filterBrandId : true;
-      const matchesCategory = filterCategoryId ? p.category_id === filterCategoryId : true;
-      return matchesSearch && matchesBrand && matchesCategory;
-    });
+    return products
+      .filter(p => {
+        const term = searchTerm.trim().toLowerCase();
+        const matchesSearch = !term || 
+          p.name.toLowerCase().includes(term) || 
+          (p.sku && p.sku.toLowerCase().includes(term));
+        const matchesBrand = filterBrandId ? p.brand_id === filterBrandId : true;
+        const matchesCategory = filterCategoryId ? p.category_id === filterCategoryId : true;
+        return matchesSearch && matchesBrand && matchesCategory;
+      })
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
   }, [products, searchTerm, filterBrandId, filterCategoryId]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -88,13 +90,17 @@ export default function Products() {
         apiClient.get('/categories/'),
         apiClient.get('/businesses/')
       ]);
-      setProducts(prodRes.data.map((p: any) => ({
-        ...p,
-        selling_price: Number(p.selling_price || 0),
-        cost_price: Number(p.cost_price || 0),
-        current_stock: Number(p.current_stock || 0),
-        min_stock: Number(p.min_stock || 0),
-      })));
+      setProducts(
+        prodRes.data
+          .map((p: any) => ({
+            ...p,
+            selling_price: Number(p.selling_price || 0),
+            cost_price: Number(p.cost_price || 0),
+            current_stock: Number(p.current_stock || 0),
+            min_stock: Number(p.min_stock || 0),
+          }))
+          .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }))
+      );
       setBrands(brandsRes.data);
       setCategories(catRes.data);
       if (currentBusiness) {

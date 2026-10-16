@@ -235,6 +235,26 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(color: borderColor, height: 1),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ganancias Después de gastos', style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text('Ventas totales - Gastos totales', style: TextStyle(color: muted.withValues(alpha: 0.7), fontSize: 10)),
+                    ],
+                  ),
+                  Text(
+                    '\$${((metrics['profit_after_expenses'] as num?) ?? ((metrics['total_sales'] as num? ?? 0) - (metrics['total_expenses'] as num? ?? 0))).toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF0D9488), letterSpacing: -0.5),
+                  ),
+                ],
+              ),
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,

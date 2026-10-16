@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Optional
 import uuid
 
 from app.core.database import get_db
@@ -116,10 +116,19 @@ async def create_product(
 async def read_products(
     business_id: uuid.UUID = Depends(get_current_business_id),
     skip: int = 0,
-    limit: int = 100,
+    limit: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Product).options(selectinload(Product.batches)).where(Product.business_id == business_id).offset(skip).limit(limit)
+    stmt = (
+        select(Product)
+        .options(selectinload(Product.batches))
+        .where(Product.business_id == business_id)
+        .order_by(func.lower(Product.name).asc())
+    )
+    if skip > 0:
+        stmt = stmt.offset(skip)
+    if limit is not None:
+        stmt = stmt.limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 

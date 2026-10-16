@@ -395,6 +395,7 @@ async def get_dashboard_metrics(
         "total_profit": float(total_profit),
         "total_payables": float(total_payables),
         "total_expenses": float(total_expenses),
+        "profit_after_expenses": float(float(total_sales) - float(total_expenses)),
         "total_suppliers": total_suppliers,
         "inventory_cost": float(inventory_cost),
         "current_inventory_cost": float(current_inventory_cost),
