@@ -27,6 +27,7 @@ async def create_product(
     data = product_in.model_dump(exclude={"extra_business_ids"})
     db_product = Product(**data, business_id=business_id)
     db.add(db_product)
+    await db.flush()
     
     # Create initial batch
     initial_batch = ProductBatch(
@@ -41,7 +42,7 @@ async def create_product(
     if data.get("current_stock", 0) > 0:
         movement = InventoryMovement(
             business_id=business_id,
-            product_id=db_product.id,
+            product=db_product,
             user_id=current_user.id,
             movement_type="ENTRADA_COMPRA",
             quantity=data.get("current_stock", 0),
