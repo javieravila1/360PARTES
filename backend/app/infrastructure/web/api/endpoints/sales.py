@@ -230,3 +230,53 @@ async def process_return(
     
     await db.commit()
     return {"status": "ok"}
+
+
+@router.delete("/{sale_id}", status_code=status.HTTP_200_OK)
+async def delete_sale(
+    sale_id: uuid.UUID,
+    business_id: uuid.UUID = Depends(get_current_business_id),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = (
+        select(Sale)
+        .options(selectinload(Sale.details))
+        .where(Sale.id == sale_id, Sale.business_id == business_id)
+    )
+    sale = (await db.execute(stmt)).scalar_one_or_none()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+
+    # Restaurar el stock de los productos vendidos
+    for detail in sale.details:
+        if detail.product_id and float(detail.quantity) > 0:
+            prod_stmt = select(Product).where(Product.id == detail.product_id, Product.business_id == business_id)
+            product = (await db.execute(prod_stmt)).scalar_one_or_none()
+            if product:
+                previous_stock = product.current_stock
+                product.current_stock = float(product.current_stock) + float(detail.quantity)
+
+                if detail.batch_id:
+                    batch_stmt = select(ProductBatch).where(ProductBatch.id == detail.batch_id, ProductBatch.business_id == business_id)
+                    batch = (await db.execute(batch_stmt)).scalar_one_or_none()
+                    if batch:
+                        batch.current_stock = float(batch.current_stock) + float(detail.quantity)
+
+                mov = InventoryMovement(
+                    business_id=business_id,
+                    product_id=product.id,
+                    user_id=current_user.id,
+                    movement_type="ANULACION_VENTA",
+                    quantity=float(detail.quantity),
+                    previous_stock=previous_stock,
+                    new_stock=product.current_stock,
+                    reason="Venta eliminada / anulada por error",
+                    reference_id=str(sale.id)
+                )
+                db.add(mov)
+
+    await db.delete(sale)
+    await db.commit()
+    return {"status": "ok", "message": "Venta eliminada y stock restaurado"}
+

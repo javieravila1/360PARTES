@@ -59,6 +59,10 @@ export default function Sales() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
+  // Delete Sale State
+  const [saleToDelete, setSaleToDelete] = useState<any | null>(null);
+  const [isDeletingSale, setIsDeletingSale] = useState(false);
+
   useEffect(() => {
     if (currentBusiness) {
       fetchData();
@@ -358,6 +362,23 @@ export default function Sales() {
     }
   };
 
+  const handleConfirmDeleteSale = async () => {
+    if (!saleToDelete) return;
+    setIsDeletingSale(true);
+    try {
+      await apiClient.delete(`/sales/${saleToDelete.id}`);
+      toast.success('Venta eliminada y stock restaurado al inventario');
+      setSaleToDelete(null);
+      fetchHistory();
+      fetchData();
+      window.dispatchEvent(new Event('db_updated'));
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al eliminar la venta');
+    } finally {
+      setIsDeletingSale(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full font-sans text-slate-800 dark:text-slate-100">
       <div className="flex mb-6 bg-white dark:bg-slate-800 p-1.5 rounded-2xl w-fit shadow-sm border border-slate-200 dark:border-slate-700">
@@ -624,7 +645,7 @@ export default function Sales() {
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Método</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Productos</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Total</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300 text-right">Recibo</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -642,13 +663,22 @@ export default function Sales() {
                       </td>
                       <td className="px-6 py-4 font-black text-emerald-600 dark:text-emerald-400">${sale.total.toLocaleString()}</td>
                       <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => printReceipt(sale)} 
-                          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 p-2 rounded-lg transition"
-                          title="Imprimir Recibo"
-                        >
-                          <Printer size={18} />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button 
+                            onClick={() => printReceipt(sale)} 
+                            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 p-2 rounded-lg transition"
+                            title="Imprimir Recibo"
+                          >
+                            <Printer size={18} />
+                          </button>
+                          <button 
+                            onClick={() => setSaleToDelete(sale)} 
+                            className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 p-2 rounded-lg transition"
+                            title="Eliminar Venta (Hecha por error)"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -807,6 +837,93 @@ export default function Sales() {
                     Confirmar y Crear Venta
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmación de Eliminación de Venta */}
+      {saleToDelete && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-lg transition-colors">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-3 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-2xl">
+                <AlertTriangle size={26} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Eliminar Venta</h2>
+                <p className="text-xs text-rose-500 font-semibold">¿Seguro que deseas anular y eliminar esta venta?</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+              Esta venta se eliminará del registro y <span className="font-bold text-emerald-600 dark:text-emerald-400">el stock de todos los repuestos vendidos será restaurado automáticamente</span> al inventario.
+            </p>
+
+            <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/60 mb-5 space-y-2.5 text-sm">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 font-medium">Factura / Venta:</span>
+                <span className="font-bold text-slate-800 dark:text-white">
+                  #{saleToDelete.invoice_number || saleToDelete.id.substring(0, 8).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Fecha:</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {formatSaleDate(saleToDelete.sale_date || saleToDelete.created_at)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Método de Pago:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">
+                  {saleToDelete.payment_method}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 font-medium">Total de la Venta:</span>
+                <span className="font-black text-rose-500 text-lg">
+                  ${Number(saleToDelete.total).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {saleToDelete.details && saleToDelete.details.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Repuestos que regresarán al stock ({saleToDelete.details.reduce((acc: number, d: any) => acc + (Number(d.quantity) || 0), 0)} unidades):
+                </p>
+                <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5">
+                  {saleToDelete.details.map((d: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/40 px-3 py-2 rounded-xl text-xs">
+                      <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-2">
+                        {d.product_name}
+                      </span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        +{d.quantity} un.
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setSaleToDelete(null)}
+                disabled={isDeletingSale}
+                className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl font-bold transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteSale}
+                disabled={isDeletingSale}
+                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDeletingSale ? 'Eliminando...' : 'Sí, Eliminar Venta'}
               </button>
             </div>
           </div>
