@@ -24,6 +24,14 @@ class CreateDebtDTO(BaseModel):
     credit_date: Optional[date] = None
     notes: Optional[str] = None
 
+class UpdateDebtDTO(BaseModel):
+    concept: Optional[str] = None
+    contact_name: Optional[str] = None
+    total_amount: Optional[float] = None
+    due_date: Optional[date] = None
+    credit_date: Optional[date] = None
+    notes: Optional[str] = None
+
 class CreateDebtPaymentDTO(BaseModel):
     amount: float
     payment_date: date
@@ -181,6 +189,55 @@ async def add_payment(
         debt.balance = Decimal("0")
     else:
         debt.status = "PARTIAL"
+
+    await db.commit()
+    await db.refresh(debt)
+    result = await db.execute(
+        select(Debt).where(Debt.id == debt.id).options(selectinload(Debt.payments))
+    )
+    debt = result.scalar_one()
+    return serialize_debt(debt)
+
+
+@router.put("/{debt_id}")
+async def update_debt(
+    debt_id: uuid.UUID,
+    data: UpdateDebtDTO,
+    business_id: uuid.UUID = Depends(get_current_business_id),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Debt).where(and_(Debt.id == debt_id, Debt.business_id == business_id))
+        .options(selectinload(Debt.payments))
+    )
+    debt = result.scalar_one_or_none()
+    if not debt:
+        raise HTTPException(status_code=404, detail="Deuda no encontrada")
+
+    if data.concept is not None:
+        debt.concept = data.concept
+    if data.contact_name is not None:
+        debt.contact_name = data.contact_name
+    if data.due_date is not None:
+        debt.due_date = data.due_date
+    if data.credit_date is not None:
+        from datetime import datetime
+        debt.created_at = datetime.combine(data.credit_date, datetime.min.time())
+    if data.notes is not None:
+        debt.notes = data.notes
+    if data.total_amount is not None:
+        new_total = Decimal(str(data.total_amount))
+        if new_total < debt.paid_amount:
+            raise HTTPException(status_code=400, detail=f"El nuevo monto total (${new_total}) no puede ser menor a lo ya abonado (${debt.paid_amount})")
+        debt.total_amount = new_total
+        debt.balance = new_total - Decimal(str(debt.paid_amount))
+        if debt.balance <= 0:
+            debt.status = "PAID"
+            debt.balance = Decimal("0")
+        elif debt.paid_amount > 0:
+            debt.status = "PARTIAL"
+        else:
+            debt.status = "PENDING"
 
     await db.commit()
     await db.refresh(debt)

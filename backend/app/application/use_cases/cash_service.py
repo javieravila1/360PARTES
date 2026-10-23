@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone
-from app.application.dtos.cash_dto import CashSessionOpenDTO, CashSessionCloseDTO, ExpenseCreateDTO
+from app.application.dtos.cash_dto import CashSessionOpenDTO, CashSessionCloseDTO, ExpenseCreateDTO, ExpenseUpdateDTO
 from app.infrastructure.database.models.cash import CashSession
 from app.infrastructure.database.models.expense import Expense
 from app.infrastructure.database.models.user import User
@@ -83,3 +83,29 @@ class CashService:
         stmt = select(Expense).where(Expense.business_id == business_id).order_by(Expense.created_at.desc())
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    async def update_expense(self, business_id: uuid.UUID, expense_id: uuid.UUID, dto: ExpenseUpdateDTO) -> Expense:
+        stmt = select(Expense).where(Expense.id == expense_id, Expense.business_id == business_id)
+        result = await self.db.execute(stmt)
+        expense = result.scalar_one_or_none()
+        if not expense:
+            raise ValueError("Gasto no encontrado")
+        
+        update_data = dto.model_dump(exclude_unset=True)
+        for key, val in update_data.items():
+            if val is not None:
+                setattr(expense, key, val)
+        
+        await self.db.commit()
+        await self.db.refresh(expense)
+        return expense
+
+    async def delete_expense(self, business_id: uuid.UUID, expense_id: uuid.UUID) -> None:
+        stmt = select(Expense).where(Expense.id == expense_id, Expense.business_id == business_id)
+        result = await self.db.execute(stmt)
+        expense = result.scalar_one_or_none()
+        if not expense:
+            raise ValueError("Gasto no encontrado")
+        
+        await self.db.delete(expense)
+        await self.db.commit()

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, User, Calendar, History, Receipt, Printer } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Landmark, User, Calendar, History, Receipt, Printer, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useBusinessStore } from '../../store/businessStore';
 import { toast } from 'react-toastify';
 import { ExcelActions } from '../../components/ExcelActions';
@@ -41,6 +41,7 @@ export default function Sales() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmSaleModal, setShowConfirmSaleModal] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -315,6 +316,14 @@ export default function Sales() {
     printWindow.document.close();
   };
 
+  const onCobrarClick = () => {
+    if (cart.length === 0) {
+      toast.warning('El carrito de compras está vacío');
+      return;
+    }
+    setShowConfirmSaleModal(true);
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setIsSubmitting(true);
@@ -340,6 +349,7 @@ export default function Sales() {
       toast.success('Venta registrada con éxito');
       setCart([]);
       setSelectedCustomerId('');
+      setShowConfirmSaleModal(false);
       fetchData();
     } catch (error) {
       toast.error('Error al procesar la venta');
@@ -531,7 +541,7 @@ export default function Sales() {
               </div>
 
               <button
-                onClick={handleCheckout}
+                onClick={onCobrarClick}
                 disabled={cart.length === 0 || isSubmitting}
                 className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-md hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-50 disabled:active:scale-100"
               >
@@ -714,6 +724,89 @@ export default function Sales() {
                 className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-bold"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Advertencia / Confirmación de Venta */}
+      {showConfirmSaleModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-lg transition-colors">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-2xl">
+                <AlertTriangle size={26} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Confirmación de Venta</h2>
+                <p className="text-xs text-slate-500">Por favor revisa y confirma los datos antes de procesar el cobro</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/60 mb-5 space-y-2.5 text-sm">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 font-medium">Total a Cobrar:</span>
+                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">${total.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between pt-1">
+                <span className="text-slate-500">Cliente:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-200">
+                  {customers.find(c => c.id === selectedCustomerId)?.name || 'Consumidor Final'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Método de Pago:</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-0.5 rounded-lg text-xs">
+                  {paymentMethod}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Fecha de Venta:</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200">{saleDate}</span>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Resumen de Productos ({cart.reduce((a, b) => a + b.cart_quantity, 0)} {cart.reduce((a, b) => a + b.cart_quantity, 0) === 1 ? 'unidad' : 'unidades'})
+              </p>
+              <div className="max-h-48 overflow-y-auto pr-1 space-y-2">
+                {cart.map((item) => (
+                  <div key={item.cart_key} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/40 p-2.5 rounded-xl text-xs">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <p className="font-bold text-slate-800 dark:text-white truncate">{item.name}</p>
+                      <p className="text-slate-500 text-[11px]">{item.cart_quantity} x ${item.selling_price.toLocaleString()}</p>
+                    </div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">${(item.cart_quantity * item.selling_price).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setShowConfirmSaleModal(false)}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl font-bold transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={isSubmitting}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>Procesando...</>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    Confirmar y Crear Venta
+                  </>
+                )}
               </button>
             </div>
           </div>

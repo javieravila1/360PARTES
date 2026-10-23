@@ -33,6 +33,14 @@ class ExpenseCreateDTO(BaseModel):
     payment_method: str
     notes: Optional[str] = None
 
+class ExpenseUpdateDTO(BaseModel):
+    category: Optional[str] = None
+    description: Optional[str] = None
+    amount: Optional[float] = None
+    expense_date: Optional[date] = None
+    payment_method: Optional[str] = None
+    notes: Optional[str] = None
+
 class ExpenseResponseDTO(BaseModel):
     id: uuid.UUID
     business_id: uuid.UUID
@@ -41,6 +49,7 @@ class ExpenseResponseDTO(BaseModel):
     amount: float
     expense_date: date
     payment_method: str
+    notes: Optional[str] = None
     
     class Config:
         from_attributes = True

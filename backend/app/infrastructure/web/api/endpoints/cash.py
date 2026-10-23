@@ -6,7 +6,14 @@ import uuid
 from app.core.database import get_db
 from app.infrastructure.web.api.deps import get_current_business_id, get_current_user
 from app.infrastructure.database.models.user import User
-from app.application.dtos.cash_dto import CashSessionOpenDTO, CashSessionCloseDTO, CashSessionResponseDTO, ExpenseCreateDTO, ExpenseResponseDTO
+from app.application.dtos.cash_dto import (
+    CashSessionOpenDTO,
+    CashSessionCloseDTO,
+    CashSessionResponseDTO,
+    ExpenseCreateDTO,
+    ExpenseUpdateDTO,
+    ExpenseResponseDTO,
+)
 from app.application.use_cases.cash_service import CashService
 
 router = APIRouter()
@@ -69,3 +76,26 @@ async def create_expense(
     service: CashService = Depends(get_cash_service)
 ):
     return await service.create_expense(business_id, current_user, dto)
+
+@router.put("/expenses/{expense_id}", response_model=ExpenseResponseDTO)
+async def update_expense(
+    expense_id: uuid.UUID,
+    dto: ExpenseUpdateDTO,
+    business_id: uuid.UUID = Depends(get_current_business_id),
+    service: CashService = Depends(get_cash_service)
+):
+    try:
+        return await service.update_expense(business_id, expense_id, dto)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.delete("/expenses/{expense_id}", status_code=204)
+async def delete_expense(
+    expense_id: uuid.UUID,
+    business_id: uuid.UUID = Depends(get_current_business_id),
+    service: CashService = Depends(get_cash_service)
+):
+    try:
+        await service.delete_expense(business_id, expense_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
