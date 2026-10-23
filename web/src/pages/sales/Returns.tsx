@@ -14,8 +14,7 @@ export default function Returns() {
   const [notes, setNotes] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtros de fecha
-  const [dateFilter, setDateFilter] = useState<string>('all');
+  // Filtro de rango de fechas (Desde - Hasta)
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -94,11 +93,8 @@ export default function Returns() {
     const matchesSearch = invoiceId.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
-    const saleDateObj = parseLocal(sale.sale_date || sale.created_at);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (dateFilter === 'custom') {
+    if (startDate || endDate) {
+      const saleDateObj = parseLocal(sale.sale_date || sale.created_at);
       if (startDate) {
         const start = new Date(startDate + 'T00:00:00');
         if (saleDateObj < start) return false;
@@ -107,25 +103,6 @@ export default function Returns() {
         const end = new Date(endDate + 'T23:59:59');
         if (saleDateObj > end) return false;
       }
-      return true;
-    }
-
-    if (dateFilter === 'today') {
-      return saleDateObj >= today;
-    }
-    if (dateFilter === 'yesterday') {
-      const yest = new Date(today);
-      yest.setDate(yest.getDate() - 1);
-      return saleDateObj >= yest && saleDateObj < today;
-    }
-    if (dateFilter === 'this_week') {
-      const startWeek = new Date(today);
-      startWeek.setDate(startWeek.getDate() - startWeek.getDay());
-      return saleDateObj >= startWeek;
-    }
-    if (dateFilter === 'this_month') {
-      const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      return saleDateObj >= startMonth;
     }
 
     return true;
@@ -161,50 +138,54 @@ export default function Returns() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              <Calendar size={14} className="text-orange-500" />
-              <span>Fecha:</span>
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="bg-transparent outline-none font-bold text-slate-700 dark:text-white cursor-pointer ml-1"
-              >
-                <option value="all">Todas</option>
-                <option value="today">Hoy</option>
-                <option value="yesterday">Ayer</option>
-                <option value="this_week">Esta semana</option>
-                <option value="this_month">Este mes</option>
-                <option value="custom">Rango personalizado</option>
-              </select>
-            </div>
-
-            {dateFilter === 'custom' && (
-              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            {/* Selector de Rango de Fechas (Desde - Hasta) idéntico al Dashboard */}
+            <div className="flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/50 p-1.5 px-3 rounded-2xl shadow-sm">
+              <Calendar size={15} className="text-indigo-500 mr-1 flex-shrink-0" />
+              
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Desde</span>
                 <input
+                  id="returns-start-date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-xs outline-none dark:text-white font-medium"
-                  title="Fecha inicio"
-                />
-                <span className="text-slate-400 text-xs">a</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-xs outline-none dark:text-white font-medium"
-                  title="Fecha fin"
+                  className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:ring-0 p-1 dark:[color-scheme:dark]"
                 />
               </div>
-            )}
 
-            {(dateFilter !== 'all' || searchTerm) && (
+              <span className="text-slate-300 dark:text-slate-600 font-bold px-0.5">-</span>
+
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hasta</span>
+                <input
+                  id="returns-end-date"
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:ring-0 p-1 dark:[color-scheme:dark]"
+                />
+              </div>
+
+              {(startDate || endDate) && (
+                <button
+                  id="returns-date-clear"
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  title="Limpiar rango de fechas"
+                  className="ml-1 p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {searchTerm && (
               <button
                 type="button"
-                onClick={() => { setDateFilter('all'); setStartDate(''); setEndDate(''); setSearchTerm(''); }}
+                onClick={() => setSearchTerm('')}
                 className="px-2.5 py-1.5 text-xs text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-lg font-bold transition"
               >
-                Limpiar
+                Limpiar búsqueda
               </button>
             )}
           </div>
