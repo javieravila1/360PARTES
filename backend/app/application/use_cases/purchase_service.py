@@ -2,10 +2,11 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
+from sqlalchemy.orm import selectinload
 from app.application.dtos.purchase_dto import PurchaseCreateDTO
 from app.infrastructure.database.models.purchase import Purchase, PurchaseDetail
 from app.infrastructure.database.models.product import Product
-from app.infrastructure.database.models.inventory import InventoryMovement
+from app.infrastructure.database.models.inventory import InventoryMovement, ProductBatch
 from app.infrastructure.database.models.payable import AccountPayable
 from app.infrastructure.database.models.user import User
 
@@ -36,7 +37,7 @@ class PurchaseService:
 
             # 2. Detalles, Stock y Movimientos
             for detail in dto.details:
-                stmt = select(Product).where(Product.id == detail.product_id, Product.business_id == business_id)
+                stmt = select(Product).options(selectinload(Product.batches)).where(Product.id == detail.product_id, Product.business_id == business_id)
                 res = await self.db.execute(stmt)
                 product = res.scalar_one_or_none()
 
@@ -60,6 +61,24 @@ class PurchaseService:
                 
                 # Actualizar el costo del producto (Opcional: Promedio ponderado, aquí asignación directa para simplificar)
                 product.cost_price = detail.unit_cost
+
+                # Sincronizar lote con la entrada de compra
+                cost = float(detail.unit_cost)
+                price = float(product.selling_price or 0)
+                existing_batch = next(
+                    (b for b in (product.batches or []) if float(b.cost_price or 0) == cost and float(b.selling_price or 0) == price),
+                    None,
+                )
+                if existing_batch:
+                    existing_batch.current_stock = float(existing_batch.current_stock or 0) + float(detail.quantity)
+                else:
+                    self.db.add(ProductBatch(
+                        business_id=business_id,
+                        product_id=product.id,
+                        current_stock=detail.quantity,
+                        cost_price=cost,
+                        selling_price=price,
+                    ))
 
                 # Movimiento de inventario
                 movement = InventoryMovement(

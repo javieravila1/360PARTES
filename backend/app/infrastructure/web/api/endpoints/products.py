@@ -17,6 +17,80 @@ from app.application.dtos.product import ProductCreate, ProductResponse, Product
 
 router = APIRouter()
 
+
+def _sync_product_batches(product: Product, db: AsyncSession, edited_fields: set[str] | None = None) -> bool:
+    """Garantiza que los lotes del producto sean consistentes con current_stock."""
+    prod_stock = float(product.current_stock or 0)
+    prod_cost = float(product.cost_price or 0)
+    prod_price = float(product.selling_price or 0)
+    batches = list(product.batches or [])
+    changed = False
+
+    if prod_stock <= 0:
+        for b in batches:
+            if float(b.current_stock or 0) != 0:
+                b.current_stock = 0
+                changed = True
+        return changed
+
+    if not batches:
+        db.add(ProductBatch(
+            business_id=product.business_id,
+            product_id=product.id,
+            current_stock=prod_stock,
+            cost_price=prod_cost,
+            selling_price=prod_price,
+        ))
+        return True
+
+    positive_batches = [b for b in batches if float(b.current_stock or 0) > 0]
+
+    # Si el producto tiene stock > 0 pero todos sus lotes están en 0, reactivar el último lote
+    if not positive_batches:
+        target = batches[-1]
+        target.current_stock = prod_stock
+        target.cost_price = prod_cost
+        target.selling_price = prod_price
+        return True
+
+    # Si solo hay un lote activo y se editó el producto directamente, sincronizar su stock/precios
+    if len(positive_batches) == 1:
+        only_batch = positive_batches[0]
+        if float(only_batch.current_stock or 0) != prod_stock:
+            only_batch.current_stock = prod_stock
+            changed = True
+        if edited_fields:
+            if "cost_price" in edited_fields and float(only_batch.cost_price or 0) != prod_cost:
+                only_batch.cost_price = prod_cost
+                changed = True
+            if "selling_price" in edited_fields and float(only_batch.selling_price or 0) != prod_price:
+                only_batch.selling_price = prod_price
+                changed = True
+        return changed
+
+    # Si hay varios lotes activos pero la suma no coincide con el stock general del producto, ajustar diferencia
+    total_batch_stock = sum(float(b.current_stock or 0) for b in positive_batches)
+    if total_batch_stock < prod_stock:
+        diff = prod_stock - total_batch_stock
+        matching = next(
+            (b for b in positive_batches if float(b.cost_price or 0) == prod_cost and float(b.selling_price or 0) == prod_price),
+            positive_batches[-1],
+        )
+        matching.current_stock = float(matching.current_stock or 0) + diff
+        changed = True
+    elif total_batch_stock > prod_stock:
+        excess = total_batch_stock - prod_stock
+        for b in positive_batches:
+            if excess <= 0:
+                break
+            b_stock = float(b.current_stock or 0)
+            deduct = min(b_stock, excess)
+            b.current_stock = b_stock - deduct
+            excess -= deduct
+        changed = True
+
+    return changed
+
 @router.post("/", response_model=ProductResponse)
 async def create_product(
     product_in: ProductCreate,
@@ -131,7 +205,18 @@ async def read_products(
     if limit is not None:
         stmt = stmt.limit(limit)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    products = result.scalars().all()
+
+    dirty = False
+    for p in products:
+        if _sync_product_batches(p, db):
+            dirty = True
+    if dirty:
+        await db.commit()
+        result = await db.execute(stmt)
+        products = result.scalars().all()
+
+    return products
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def read_product(
@@ -145,6 +230,11 @@ async def read_product(
     
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    if _sync_product_batches(product, db):
+        await db.commit()
+        result = await db.execute(stmt)
+        product = result.scalar_one()
         
     return product
 
@@ -165,6 +255,8 @@ async def update_product(
     update_data = product_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(product, key, value)
+
+    _sync_product_batches(product, db, edited_fields=set(update_data.keys()))
         
     await db.commit()
     

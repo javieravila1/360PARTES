@@ -88,7 +88,22 @@ async def create_sale(
                 batch = batch_res.scalar_one_or_none()
                 if not batch:
                     raise HTTPException(status_code=400, detail=f"Batch {detail.batch_id} not found")
-                batch.current_stock = float(batch.current_stock) - float(qty)
+                batch.current_stock = max(0.0, float(batch.current_stock) - float(qty))
+            else:
+                batches_stmt = select(ProductBatch).where(
+                    ProductBatch.product_id == product.id,
+                    ProductBatch.business_id == business_id,
+                    ProductBatch.current_stock > 0
+                ).order_by(ProductBatch.created_at.asc())
+                batches_res = await db.execute(batches_stmt)
+                remaining_to_deduct = float(qty)
+                for b in batches_res.scalars().all():
+                    if remaining_to_deduct <= 0:
+                        break
+                    b_stock = float(b.current_stock or 0)
+                    deduct = min(b_stock, remaining_to_deduct)
+                    b.current_stock = b_stock - deduct
+                    remaining_to_deduct -= deduct
             
             if product.track_inventory:
                 previous_stock = product.current_stock

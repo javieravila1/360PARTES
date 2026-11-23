@@ -45,6 +45,19 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
+  double _resolveAvailableStock(Map<String, dynamic> product, [Map<String, dynamic>? batch]) {
+    final productStock = double.tryParse(product['current_stock']?.toString() ?? '0') ?? 0.0;
+    if (batch == null) return productStock;
+
+    final batchStock = double.tryParse(batch['current_stock']?.toString() ?? '0') ?? 0.0;
+    final availableBatchesCount = ((product['batches'] as List?) ?? [])
+        .where((b) => (double.tryParse((b as Map)['current_stock']?.toString() ?? '0') ?? 0) > 0)
+        .length;
+
+    if (availableBatchesCount > 1) return batchStock;
+    return batchStock > productStock ? batchStock : productStock;
+  }
+
   void _handleAddToCart(BuildContext context, WidgetRef ref, Map<String, dynamic> p) {
     final batches = (p['batches'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     if (batches.isEmpty) {
@@ -52,9 +65,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       return;
     }
     
-    final availableBatches = batches.where((b) => (b['current_stock'] as num? ?? 0) > 0).toList();
+    final availableBatches = batches
+        .where((b) => (double.tryParse(b['current_stock']?.toString() ?? '0') ?? 0) > 0)
+        .toList();
     if (availableBatches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay lotes con stock')));
+      _addToCartDirectly(context, ref, p);
       return;
     }
 
@@ -87,7 +102,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   void _addToCartDirectly(BuildContext context, WidgetRef ref, Map<String, dynamic> product, [Map<String, dynamic>? batch]) {
-    final availableStock = double.tryParse((batch != null ? batch['current_stock'] : product['current_stock'])?.toString() ?? '0') ?? 0.0;
+    final availableStock = _resolveAvailableStock(product, batch);
     final cartItems = ref.read(cartProvider);
     final key = '${product['id']}-${batch?['id'] ?? ''}';
     
@@ -611,7 +626,16 @@ class _CartBottomSheetState extends ConsumerState<_CartBottomSheet> with SingleT
                             IconButton(
                               icon: const Icon(PhosphorIconsRegular.plusCircle),
                               onPressed: () {
-                                final availableStock = double.tryParse((item.batch != null ? item.batch!['current_stock'] : item.product['current_stock'])?.toString() ?? '0') ?? 0.0;
+                                final productStock = double.tryParse(item.product['current_stock']?.toString() ?? '0') ?? 0.0;
+                                final batchStock = item.batch != null
+                                    ? (double.tryParse(item.batch!['current_stock']?.toString() ?? '0') ?? 0.0)
+                                    : productStock;
+                                final availableBatchesCount = ((item.product['batches'] as List?) ?? [])
+                                    .where((b) => (double.tryParse((b as Map)['current_stock']?.toString() ?? '0') ?? 0) > 0)
+                                    .length;
+                                final availableStock = (item.batch != null && availableBatchesCount > 1)
+                                    ? batchStock
+                                    : (batchStock > productStock ? batchStock : productStock);
                                 if (item.quantity + 1 > availableStock) {
                                   ScaffoldMessenger.of(context).clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
