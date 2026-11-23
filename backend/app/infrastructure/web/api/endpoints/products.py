@@ -53,17 +53,18 @@ def _sync_product_batches(product: Product, db: AsyncSession, edited_fields: set
         target.selling_price = prod_price
         return True
 
-    # Si solo hay un lote activo y se editó el producto directamente, sincronizar su stock/precios
+    # Si solo hay un lote activo, sincronizar su stock y precios con el producto
     if len(positive_batches) == 1:
         only_batch = positive_batches[0]
         if float(only_batch.current_stock or 0) != prod_stock:
             only_batch.current_stock = prod_stock
             changed = True
-        if edited_fields:
-            if "cost_price" in edited_fields and float(only_batch.cost_price or 0) != prod_cost:
+        if len(batches) == 1 or (edited_fields and "cost_price" in edited_fields):
+            if float(only_batch.cost_price or 0) != prod_cost:
                 only_batch.cost_price = prod_cost
                 changed = True
-            if "selling_price" in edited_fields and float(only_batch.selling_price or 0) != prod_price:
+        if len(batches) == 1 or (edited_fields and "selling_price" in edited_fields):
+            if float(only_batch.selling_price or 0) != prod_price:
                 only_batch.selling_price = prod_price
                 changed = True
         return changed
